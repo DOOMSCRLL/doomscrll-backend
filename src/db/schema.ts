@@ -2,7 +2,6 @@ import * as d from "drizzle-orm/pg-core"
 
 export const profiles = d.pgTable("profiles", {
 	id: d.uuid("id").primaryKey().defaultRandom(),
-	authId: d.uuid("auth_id").unique().notNull(), // FIXME: Connect this to auth service's db.
 	email: d.varchar("email", { length: 255 }).notNull().unique(),
 	username: d.varchar("username", { length: 256 }).notNull().unique(),
 	createdAt: d.timestamp("created_at").defaultNow().notNull(),
