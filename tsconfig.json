@@ -1,20 +1,17 @@
 {
-  "extends": "fastify-tsconfig",
-  "compilerOptions": {
-    "sourceMap": true,
-    "allowSyntheticDefaultImports": true,
-    "erasableSyntaxOnly": true,
-    "forceConsistentCasingInFileNames": true,
-    "noImplicitAny": true,
-    "resolveJsonModule": true,
-    "skipLibCheck": true,
-    "strict": true,
-  },
-  "include": [
-    "src/**/*.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist"
-  ]
+	"extends": "fastify-tsconfig",
+	"compilerOptions": {
+		"outDir": "dist",
+		"rootDir": "src",
+		"sourceMap": true,
+		"allowSyntheticDefaultImports": true,
+		"erasableSyntaxOnly": true,
+		"forceConsistentCasingInFileNames": true,
+		"noImplicitAny": true,
+		"resolveJsonModule": true,
+		"skipLibCheck": true,
+		"strict": true
+	},
+	"include": ["src/**/*.ts"],
+	"exclude": ["node_modules", "dist"]
 }
