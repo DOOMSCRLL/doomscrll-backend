@@ -1,13 +1,20 @@
-import { join } from "node:path"
+import { dirname, join } from "path"
+import { fileURLToPath } from "url"
+
 import AutoLoad, { AutoloadPluginOptions } from "@fastify/autoload"
 import { FastifyPluginAsync, FastifyServerOptions } from "fastify"
+import { serializerCompiler, validatorCompiler } from "fastify-type-provider-zod"
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
 
 export interface AppOptions extends FastifyServerOptions, Partial<AutoloadPluginOptions> {}
 // Pass --options via CLI arguments in command to enable these options.
 const options: AppOptions = {}
 
 const app: FastifyPluginAsync<AppOptions> = async (fastify, opts): Promise<void> => {
-	// Place here your custom code!
+	fastify.setValidatorCompiler(validatorCompiler)
+	fastify.setSerializerCompiler(serializerCompiler)
 
 	// Do not touch the following lines
 

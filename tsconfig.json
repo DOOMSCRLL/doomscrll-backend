@@ -4,6 +4,7 @@
 		"outDir": "dist",
 		"rootDir": "src",
 		"sourceMap": true,
+		"esModuleInterop": true,
 		"allowSyntheticDefaultImports": true,
 		"erasableSyntaxOnly": true,
 		"forceConsistentCasingInFileNames": true,

@@ -5,6 +5,7 @@
 	"author": "Yakup Murat ÇAYLAK",
 	"description": "Backend for the DOOMSCRLL project.",
 	"main": "app.ts",
+	"type": "module",
 	"directories": {
 		"test": "test"
 	},
@@ -24,6 +25,7 @@
 		"@fastify/autoload": "^6.0.0",
 		"@fastify/cookie": "^11.0.2",
 		"@fastify/cors": "^11.2.0",
+		"@fastify/schedule": "^6.0.0",
 		"@fastify/sensible": "^6.0.0",
 		"@plunk/node": "^3.0.3",
 		"dotenv": "^17.4.2",
@@ -31,7 +33,9 @@
 		"fastify": "^5.0.0",
 		"fastify-cli": "^8.0.0",
 		"fastify-plugin": "^5.0.0",
+		"fastify-type-provider-zod": "^6.1.0",
 		"postgres": "^3.4.9",
+		"toad-scheduler": "^4.0.1",
 		"zod": "^4.4.3"
 	},
 	"devDependencies": {
