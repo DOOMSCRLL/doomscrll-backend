@@ -8,7 +8,7 @@ import { otpCodes, sessions } from "../db/schema.js"
 export default fp(async (fastify) => {
 	await fastify.register(fastifySchedule)
 
-	const claenupTask = new AsyncTask(
+	const cleanupTask = new AsyncTask(
 		"clean-database",
 		async () => {
 			fastify.log.info("Running database cleanup job.")
@@ -40,7 +40,7 @@ export default fp(async (fastify) => {
 		},
 	)
 
-	const job = new SimpleIntervalJob({ hours: 1, runImmediately: false }, claenupTask)
+	const job = new SimpleIntervalJob({ hours: 1, runImmediately: false }, cleanupTask)
 	//const job = new SimpleIntervalJob({ seconds: 10, runImmediately: true }, claenupTask)
 	fastify.scheduler.addSimpleIntervalJob(job)
 })

@@ -3,7 +3,9 @@ import * as d from "drizzle-orm/pg-core"
 export const profiles = d.pgTable("profiles", {
 	id: d.uuid("id").primaryKey().defaultRandom(),
 	email: d.varchar("email", { length: 255 }).notNull().unique(),
-	username: d.varchar("username", { length: 256 }).notNull().unique(),
+	username: d.varchar("username", { length: 255 }).notNull().unique(),
+	description: d.varchar("description", { length: 255 }),
+	url: d.varchar("url", { length: 255 }),
 	createdAt: d.timestamp("created_at").defaultNow().notNull(),
 })
 
