@@ -15,6 +15,7 @@ export interface AppOptions extends FastifyServerOptions, Partial<AutoloadPlugin
 const options: AppOptions = {}
 
 const app: FastifyPluginAsync<AppOptions> = async (fastify, opts): Promise<void> => {
+	console.log("DEBUG: `app.ts` is running!")
 	fastify.setValidatorCompiler(validatorCompiler)
 	fastify.setSerializerCompiler(serializerCompiler)
 

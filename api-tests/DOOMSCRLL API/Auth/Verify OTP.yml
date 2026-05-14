@@ -1,0 +1,22 @@
+info:
+  name: Verify OTP
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{BASE_URL}}/auth/verify"
+  body:
+    type: json
+    data: |-
+      {
+        "email": "test@doomscrll.com",
+        "code": "WRITE_OTP_HERE"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

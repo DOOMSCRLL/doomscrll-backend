@@ -1,0 +1,23 @@
+info:
+  name: Update Profile (Private)
+  type: http
+  seq: 2
+
+http:
+  method: PATCH
+  url: "{{BASE_URL}}/profile/me"
+  body:
+    type: json
+    data: |-
+      {
+        "username": "notymc",
+        "description": "I'm building DOOMSCRLL.",
+        "url": "https://doomscrll.com"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5

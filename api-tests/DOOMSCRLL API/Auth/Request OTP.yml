@@ -1,0 +1,21 @@
+info:
+  name: Request OTP
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{BASE_URL}}/auth/request"
+  body:
+    type: json
+    data: |-
+      {
+        "email": "test@doomscrll.com"
+      }
+  auth: inherit
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
