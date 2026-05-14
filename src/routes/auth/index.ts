@@ -17,6 +17,12 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
 	typedFastify.post(
 		"/request",
 		{
+			config: {
+				rateLimit: {
+					max: 3,
+					timeWindow: "5 minutes",
+				},
+			},
 			schema: {
 				body: z.object({
 					email: z.string().email("Please provide a valid email address"),
