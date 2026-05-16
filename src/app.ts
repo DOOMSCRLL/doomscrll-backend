@@ -15,10 +15,10 @@ export interface AppOptions extends FastifyServerOptions, Partial<AutoloadPlugin
 const options: AppOptions = {}
 
 const app: FastifyPluginAsync<AppOptions> = async (fastify, opts): Promise<void> => {
-	console.log("DEBUG: `app.ts` is running!")
 	fastify.setValidatorCompiler(validatorCompiler)
 	fastify.setSerializerCompiler(serializerCompiler)
 
+	// rate is limited to; a max of 16 request per minute
 	await fastify.register(fastifyRateLimit, {
 		global: false,
 		max: 16,
