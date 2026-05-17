@@ -37,6 +37,8 @@ export const projects = d.pgTable("projects", {
 	tags: d.text("tags").array(),
 	secondaryPlatforms: d.jsonb("secondary_platforms").$type<{ platform: string; url: string }[]>(),
 
+	features: d.text("features").array(),
+
 	coverImagePath: d.text("cover_image_path"),
 	screenshotPaths: d.text("screenshot_paths").array(),
 	videoUrl: d.text("video_url"),

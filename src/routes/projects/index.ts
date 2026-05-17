@@ -1,11 +1,15 @@
+import { PutObjectCommand } from "@aws-sdk/client-s3"
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 import { and, count, eq, sql } from "drizzle-orm"
 import { FastifyPluginAsyncZod } from "fastify-type-provider-zod"
 import { nanoid } from "nanoid"
+import { z } from "zod"
 
 import { DB_RULES } from "../../config/index.js"
 import { db } from "../../db/index.js"
 import { projectLedger, projects } from "../../db/schema.js"
-import { reserveProjectSchema } from "./schemas.js"
+import { BUCKET_NAME, r2Client } from "../../lib/r2.js"
+import { patchContentSchema, publishContentSchema, reserveProjectSchema } from "./schemas.js"
 
 export const projectRoutes: FastifyPluginAsyncZod = async (fastify) => {
 	fastify.post(
@@ -130,6 +134,184 @@ export const projectRoutes: FastifyPluginAsyncZod = async (fastify) => {
 				return reply
 					.code(500)
 					.send({ success: false, error: { code: "INTERNAL_ERROR", message: "Failed to secure DOOMLIT reservation." } })
+			}
+		},
+	)
+
+	fastify.post(
+		"/:referenceId/upload-urls",
+		{
+			schema: {
+				params: z.object({ referenceId: z.string().length(12) }),
+				body: z.object({ screenshotCount: z.number().int().min(0).max(DB_RULES.limitScreenshots) }),
+			},
+			preHandler: [fastify.authenticate],
+		},
+		async (request, reply) => {
+			const { referenceId } = request.params
+			const { screenshotCount } = request.body
+			const profileId = request.user.id
+
+			const [projectData] = await db
+				.select({ status: projects.status, ownerId: projectLedger.profileId })
+				.from(projects)
+				.innerJoin(projectLedger, eq(projects.ledgerId, projectLedger.id))
+				.where(eq(projects.referenceId, referenceId))
+
+			if (!projectData || projectData.ownerId !== profileId) {
+				return reply.code(403).send({ success: false, error: "Unauthorized access" })
+			}
+			if (projectData.status !== "incomplete") {
+				return reply.code(400).send({ success: false, error: "Project is not awaiting content." })
+			}
+
+			try {
+				const coverKey = `projects/${referenceId}/cover-${Date.now()}.webp`
+				const coverCommand = new PutObjectCommand({
+					Bucket: BUCKET_NAME,
+					Key: coverKey,
+					ContentType: "image/webp",
+				})
+				const coverUploadUrl = await getSignedUrl(r2Client, coverCommand, { expiresIn: 3600 })
+
+				const screenshots = []
+				for (let i = 0; i < screenshotCount; i++) {
+					const shotKey = `projects/${referenceId}/screenshot-${i}-${Date.now()}.webp`
+					const shotCommand = new PutObjectCommand({
+						Bucket: BUCKET_NAME,
+						Key: shotKey,
+						ContentType: "image/webp",
+					})
+					const uploadUrl = await getSignedUrl(r2Client, shotCommand, { expiresIn: 3600 })
+					screenshots.push({ uploadUrl, path: shotKey })
+				}
+
+				return reply.send({
+					success: true,
+					data: {
+						cover: { uploadUrl: coverUploadUrl, path: coverKey },
+						screenshots: screenshots,
+					},
+				})
+			} catch (error) {
+				request.log.error(error)
+				return reply.code(500).send({ success: false, error: "Failed to generate upload URLs." })
+			}
+		},
+	)
+
+	fastify.patch(
+		"/:referenceId",
+		{
+			schema: {
+				params: z.object({
+					referenceId: z.string().length(DB_RULES.lengthProjectRefId + DB_RULES.prefixProjectRefId.length),
+				}),
+				body: patchContentSchema,
+			},
+			preHandler: [fastify.authenticate],
+		},
+		async (request, reply) => {
+			const { referenceId } = request.params
+			const payload = request.body
+			const profileId = request.user.id
+
+			try {
+				const [projectData] = await db
+					.select({
+						id: projects.id,
+						status: projects.status,
+						ownerId: projectLedger.profileId,
+					})
+					.from(projects)
+					.innerJoin(projectLedger, eq(projects.ledgerId, projectLedger.id))
+					.where(eq(projects.referenceId, referenceId))
+
+				if (!projectData || projectData.ownerId !== profileId) {
+					return reply.code(403).send({ success: false, error: "Unauthorized access" })
+				} else if (projectData.status === "incomplete") {
+					return reply.code(400).send({ success: false, error: "Project is not awaiting content." })
+				}
+
+				await db.update(projects).set(payload).where(eq(projects.id, projectData.id))
+				return reply.code(200).send({ success: true, message: "Project details are updated." })
+			} catch (error) {
+				request.log.error(error)
+				return reply.code(500).send({ success: false, error: "Failed to save project content." })
+			}
+		},
+	)
+
+	fastify.post(
+		"/:referenceId/publish",
+		{
+			schema: {
+				params: z.object({
+					referenceId: z.string().length(DB_RULES.lengthProjectRefId + DB_RULES.prefixProjectRefId.length),
+				}),
+			},
+			preHandler: [fastify.authenticate],
+		},
+		async (request, reply) => {
+			const { referenceId } = request.params
+			const profileId = request.user.id
+
+			try {
+				const result = await db.transaction(async (tx) => {
+					const [projectData] = await tx
+						.select()
+						.from(projects)
+						.innerJoin(projectLedger, eq(projects.ledgerId, projectLedger.id))
+						.where(eq(projects.referenceId, referenceId))
+
+					if (!projectData || projectData.project_ledger.profileId !== profileId) {
+						tx.rollback()
+						return { error: "UNAUTHORIZED" as const }
+					} else if (projectData.projects.status !== "incomplete") {
+						tx.rollback()
+						return { error: "INVALID_STATE" as const }
+					}
+
+					const p = projectData.projects
+					const validation = publishContentSchema.safeParse({
+						description: p.description,
+						tags: p.tags,
+						features: p.features,
+						coverImagePath: p.coverImagePath,
+						screenshotPaths: p.screenshotPaths,
+						secondaryPlatforms: p.secondaryPlatforms,
+						videoUrl: p.videoUrl,
+					})
+
+					if (!validation.success) {
+						tx.rollback()
+						return { error: "VALIDATION_FAILED" as const, issues: validation.error.flatten().fieldErrors }
+					}
+
+					await tx.update(projects).set({ status: "ready" }).where(eq(projects.id, p.id))
+					return { success: true }
+				})
+
+				switch (result.error) {
+					case "UNAUTHORIZED":
+						return reply.code(403).send({ success: false, error: "Unauthorized access" })
+					case "INVALID_STATE":
+						return reply.code(400).send({ success: false, error: "Project is not awaiting content." })
+					case "VALIDATION_FAILED":
+						return reply.code(400).send({
+							success: false,
+							message: "Missing or invalid required fields.",
+							errors: result.issues,
+						})
+					default:
+						return reply.code(200).send({
+							success: true,
+							message: "Project is ready for showcase.",
+						})
+				}
+			} catch (error) {
+				request.log.error(error)
+				return reply.code(500).send({ success: false, error: "Failed to publish project." })
 			}
 		},
 	)
