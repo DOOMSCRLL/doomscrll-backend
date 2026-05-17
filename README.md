@@ -3,25 +3,51 @@
 ## Index
 
 - [Tech Stack](#tech-stack)
-
+- [State Machines](#state-machines)
 - [API Endpoints](#api-endpoints)
   - [Auth API](#auth-api)
   - [Profile API](#profile-api)
+  - [Projects API (DOOMLITs)](#projects-api-doomlits)
+  - [Webhooks API](#webhooks-api)
 
 ---
 
 ## Tech Stack
 
-- _Fastify_ as server (_Cookies, CORS, rate limiter, job scheduler_)
-- _PostgreSQL_ as database
-- _Drizzle_ as ORM
-- _zod_ as schema verifier
-- _Plunk_ as email delivery service
-- _Cloudflare R2 & CDN_ as image storage and CDN
-- _Lemon Squeezy_ as payment processor
-- _Docker_ for containers
-- _Bruno_ for API testing
-- _Cloudflare_ for hosting
+- **Fastify** as server _(Cookies, CORS, rate limiter, raw-body parsing)_
+- **PostgreSQL** as database
+- **Drizzle** as ORM
+- **zod** as schema verifier
+- **toad-scheduler** as background job scheduler _(DB cleanup, expired draft sweeping)_
+- **Plunk** as email delivery service
+- **Cloudflare R2** as image storage and CDN _(via @aws-sdk/client-s3)_
+- **Lemon Squeezy** as Merchant of Record / payment processor
+- **Docker** for containers
+- **Bruno** for API testing
+
+---
+
+## State Machines
+
+The DOOMLIT architecture safely decouples the user's content journey from the financial ledger.
+
+### DOOMLIT Lifecycle (`project_status` Enum)
+
+1. `draft`: Ephemeral 15-minute reservation. Awaiting payment.
+2. `incomplete`: Payment succeeded. Awaiting required content uploads.
+3. `ready`: All required fields verified. Locked in for the showcase date.
+4. `showcased`: The showcase date has passed. Project is archived.
+5. `canceled`: Administrative override (e.g., chargeback, terms violation).
+
+### Financial Ledger (`receipt_status` Enum)
+
+Receipts are immutable historical records. They skip the pending phase entirely.
+
+1. `succeeded`: Payment cleared, receipt generated.
+2. `refunded`: Creator was refunded via Lemon Squeezy dashboard.
+3. `disputed`: Creator initiated a bank chargeback.
+
+---
 
 ## API Endpoints
 
@@ -29,21 +55,42 @@
 
 #### Public end-points:
 
-- `POST /auth/request`: For sign-in/auth request. Generates and sends a 6-digit OTP to user's email, uses Plunk's API
-- `POST /auth/verify`: For sign-in/auth verification. Validates OTP, returns a HTTP-only session cookie for the account. If account doesn't exist yet, creates one with sensible defaults.
+- `POST /auth/request`: For sign-in/auth request. Generates and sends a 6-digit OTP to the user's email via Plunk.
+- `POST /auth/verify`: For sign-in/auth verification. Validates OTP, returns a HTTP-only session cookie. If the account doesn't exist, creates one with sensible defaults.
 
 #### Protected end-points:
 
-- `POST /auth/logout`: For sign-out request. Removes active session from DB, and clears client cookie.
+- `POST /auth/logout`: For sign-out request. Removes the active session from the DB and clears the client cookie.
+
+---
 
 ### Profile API
 
 #### Public end-points:
 
-- `GET /profile/:username`: Returns public creator information
+- `GET /profile/:username`: Returns public creator information.
 
 #### Protected end-points:
 
-- `GET /profile/me`: Returns profile of authenticated user
-- `PATCH /profile/me`: Updates profile of authenticated user
-- `DELETE /profile/me`: Removes profile of authenticated user. Operation cascades.
+- `GET /profile/me`: Returns profile of the authenticated user.
+- `PATCH /profile/me`: Updates profile of the authenticated user.
+- `DELETE /profile/me`: Removes profile of the authenticated user. Operation cascades.
+
+---
+
+### Projects API (DOOMLITs)
+
+#### Protected end-points:
+
+- `POST /projects/reserve`: The transaction bouncer. Verifies UTC deadzones, enforces the 256 daily slot limit, and checks the `project_ledger` for the 14-day anti-abuse cooldown. Creates a `draft` and returns the `referenceId`.
+- `POST /projects/:referenceId/upload-urls`: The CDN broker. Generates and returns time-limited, pre-signed Cloudflare R2 URLs for direct client-to-CDN `.webp` image uploads.
+- `PATCH /projects/:referenceId`: Auto-save route. Accepts partial content payloads to update the database row. Does not alter the `incomplete` status.
+- `POST /projects/:referenceId/publish`: The final lock-in. Validates the existing database row against the strict Zod publish schema. If all required content (description, tags, cover image) is present, flips the status to `ready`.
+
+---
+
+### Webhooks API
+
+#### Public end-points:
+
+- `POST /webhooks/lemonsqueezy`: Passive listener for payment events. Expects a raw body to verify the Lemon Squeezy cryptographic `X-Signature`. Upon a successful `order_created` event, extracts the DOOMLIT `referenceId` from `custom_data`, updates the project to `incomplete`, and writes an immutable `receipt`.
