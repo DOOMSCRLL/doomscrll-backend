@@ -1,4 +1,4 @@
-import crypto from "crypto"
+import crypto from "node:crypto"
 
 import PlunkModule from "@plunk/node"
 import { and, eq, gt } from "drizzle-orm"
