@@ -1,15 +1,15 @@
 import fastifySchedule from "@fastify/schedule"
-import { lt } from "drizzle-orm"
+import { and, eq, lt, sql } from "drizzle-orm"
 import fp from "fastify-plugin"
 import { AsyncTask, SimpleIntervalJob } from "toad-scheduler"
 
-import { otpCodes, sessions } from "../db/schema.js"
+import { otpCodes, projects, sessions } from "../db/schema.js"
 
 export default fp(async (fastify) => {
 	await fastify.register(fastifySchedule)
 
-	const cleanupTask = new AsyncTask(
-		"clean-database",
+	const authArtifactCleanup = new AsyncTask(
+		"clean-auth-artifacts",
 		async () => {
 			fastify.log.info("Running database cleanup job.")
 
@@ -40,7 +40,33 @@ export default fp(async (fastify) => {
 		},
 	)
 
-	const job = new SimpleIntervalJob({ hours: 1, runImmediately: false }, cleanupTask)
-	//const job = new SimpleIntervalJob({ seconds: 10, runImmediately: true }, claenupTask)
-	fastify.scheduler.addSimpleIntervalJob(job)
+	const authArtifactCleanupJob = new SimpleIntervalJob({ hours: 1, runImmediately: false }, authArtifactCleanup)
+	//const authArtifactCleanupJob = new SimpleIntervalJob({ seconds: 10, runImmediately: true }, claenupTask)
+	fastify.scheduler.addSimpleIntervalJob(authArtifactCleanupJob)
+
+	const expiredDraftCleanup = new AsyncTask(
+		"clean-expired-drafts",
+		async () => {
+			try {
+				const deletedDrafts = await fastify.db
+					.delete(projects)
+					.where(
+						and(eq(projects.status, "draft_reserved"), sql`${projects.reservedAt} < NOW() - INTERVAL '15 minutes'`),
+					)
+					.returning({ id: projects.referenceId })
+
+				if (deletedDrafts.length > 0) {
+					fastify.log.info(`Cleanup complete: Removed ${deletedDrafts.length} expired drafts.`)
+				}
+			} catch (error) {
+				fastify.log.error({ error }, "Expired draft cleanup failed.")
+			}
+		},
+		(error) => {
+			fastify.log.error({ error }, "Expired draft cleanup task execution failed.")
+		},
+	)
+
+	const expiredDraftCleanupJob = new SimpleIntervalJob({ minutes: 1, runImmediately: true }, expiredDraftCleanup)
+	fastify.scheduler.addSimpleIntervalJob(expiredDraftCleanupJob)
 })

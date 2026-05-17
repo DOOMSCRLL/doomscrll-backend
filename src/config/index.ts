@@ -6,7 +6,7 @@ export const DB_RULES = {
 	limitReservationWindow: 30, // days
 
 	timeUTCServerReset: "00:00",
-	bufferReservationDeadzone: 1, // hours
+	hourUTCDeadzone: 23, // hours
 
 	durationPaymentTimeout: 15, // mins
 

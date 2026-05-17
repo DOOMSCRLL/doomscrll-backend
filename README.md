@@ -17,8 +17,11 @@
 - _Drizzle_ as ORM
 - _zod_ as schema verifier
 - _Plunk_ as email delivery service
-- _Docker_ as containers
+- _Cloudflare R2 & CDN_ as image storage and CDN
+- _Lemon Squeezy_ as payment processor
+- _Docker_ for containers
 - _Bruno_ for API testing
+- _Cloudflare_ for hosting
 
 ## API Endpoints
 
