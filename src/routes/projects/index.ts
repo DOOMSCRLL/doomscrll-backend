@@ -94,7 +94,7 @@ export const projectRoutes: FastifyPluginAsyncZod = async (fastify) => {
 							category: payload.category,
 							primaryPlatform: payload.primaryPlatform,
 							primaryUrl: payload.primaryUrl,
-							status: "draft_reserved",
+							status: "draft",
 						})
 						.returning()
 
@@ -102,12 +102,10 @@ export const projectRoutes: FastifyPluginAsyncZod = async (fastify) => {
 				})
 
 				if (result.error === "SLOT_UNAVAILABLE") {
-					return reply
-						.code(409)
-						.send({
-							success: false,
-							error: { code: "SLOT_UNAVAILABLE", message: "All DOOMLITs have been reserved for this date." },
-						})
+					return reply.code(409).send({
+						success: false,
+						error: { code: "SLOT_UNAVAILABLE", message: "All DOOMLITs have been reserved for this date." },
+					})
 				} else if (result.error === "COOLDOWN_ACTIVE") {
 					return reply.code(429).send({
 						success: false,

@@ -50,9 +50,7 @@ export default fp(async (fastify) => {
 			try {
 				const deletedDrafts = await fastify.db
 					.delete(projects)
-					.where(
-						and(eq(projects.status, "draft_reserved"), sql`${projects.reservedAt} < NOW() - INTERVAL '15 minutes'`),
-					)
+					.where(and(eq(projects.status, "draft"), sql`${projects.reservedAt} < NOW() - INTERVAL '15 minutes'`))
 					.returning({ id: projects.referenceId })
 
 				if (deletedDrafts.length > 0) {

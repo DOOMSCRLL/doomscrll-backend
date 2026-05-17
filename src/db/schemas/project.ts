@@ -3,6 +3,8 @@ import * as d from "drizzle-orm/pg-core"
 import { DB_RULES } from "../../config/index.js"
 import { profiles } from "./auth.js"
 
+export const projectStatusEnum = d.pgEnum("project_status", ["draft", "incomplete", "ready", "showcased", "canceled"])
+
 export const projectLedger = d.pgTable("project_ledger", {
 	id: d.uuid("id").primaryKey().defaultRandom(),
 	profileId: d.uuid("profile_id").references(() => profiles.id, { onDelete: "set null" }),
@@ -23,7 +25,7 @@ export const projects = d.pgTable("projects", {
 		.references(() => projectLedger.id, { onDelete: "cascade" }),
 
 	showcaseDate: d.date("showcase_date").notNull(),
-	status: d.text("status").notNull().default("draft_reserved"),
+	status: projectStatusEnum("status").notNull().default("draft"),
 	reservedAt: d.timestamp("reserved_at").defaultNow().notNull(),
 
 	name: d.varchar("name", { length: DB_RULES.maxLengthProjectTitle }).notNull(),
@@ -42,6 +44,8 @@ export const projects = d.pgTable("projects", {
 	createdAt: d.timestamp("created_at").defaultNow().notNull(),
 })
 
+export const receiptStatusEnum = d.pgEnum("receipt_status", ["succeeded", "refunded", "disputed"])
+
 export const receipts = d.pgTable("receipts", {
 	id: d.uuid("id").primaryKey().defaultRandom(),
 	profileId: d.uuid("profile_id").references(() => profiles.id, { onDelete: "set null" }),
@@ -57,6 +61,6 @@ export const receipts = d.pgTable("receipts", {
 	providerTransactionId: d.text("provider_transaction_id").notNull(),
 	receiptUrl: d.text("receipt_url"),
 
-	status: d.text("status").notNull(),
+	status: receiptStatusEnum("status").notNull().default("succeeded"),
 	createdAt: d.timestamp("created_at").defaultNow().notNull(),
 })
