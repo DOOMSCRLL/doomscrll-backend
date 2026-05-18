@@ -1,9 +1,12 @@
+import { DeleteObjectsCommand } from "@aws-sdk/client-s3"
 import fastifySchedule from "@fastify/schedule"
-import { and, eq, lt, sql } from "drizzle-orm"
+import { and, eq, inArray, lt, sql } from "drizzle-orm"
 import fp from "fastify-plugin"
-import { AsyncTask, SimpleIntervalJob } from "toad-scheduler"
+import { AsyncTask, CronJob, SimpleIntervalJob } from "toad-scheduler"
 
+import { db } from "../db/index.js"
 import { otpCodes, projects, sessions } from "../db/schema.js"
+import { BUCKET_NAME, r2Client } from "../lib/r2.js"
 
 export default fp(async (fastify) => {
 	await fastify.register(fastifySchedule)
@@ -15,12 +18,9 @@ export default fp(async (fastify) => {
 
 			const now = new Date()
 			try {
-				const deletedOtps = await fastify.db
-					.delete(otpCodes)
-					.where(lt(otpCodes.expiresAt, now))
-					.returning({ id: otpCodes.id })
+				const deletedOtps = await db.delete(otpCodes).where(lt(otpCodes.expiresAt, now)).returning({ id: otpCodes.id })
 
-				const deletedSessions = await fastify.db
+				const deletedSessions = await db
 					.delete(sessions)
 					.where(lt(sessions.expiresAt, now))
 					.returning({ id: sessions.id })
@@ -48,7 +48,7 @@ export default fp(async (fastify) => {
 		"clean-expired-drafts",
 		async () => {
 			try {
-				const deletedDrafts = await fastify.db
+				const deletedDrafts = await db
 					.delete(projects)
 					.where(and(eq(projects.status, "draft"), sql`${projects.reservedAt} < NOW() - INTERVAL '15 minutes'`))
 					.returning({ id: projects.referenceId })
@@ -67,4 +67,61 @@ export default fp(async (fastify) => {
 
 	const expiredDraftCleanupJob = new SimpleIntervalJob({ minutes: 1, runImmediately: true }, expiredDraftCleanup)
 	fastify.scheduler.addSimpleIntervalJob(expiredDraftCleanupJob)
+
+	const dailyResetCleanup = new AsyncTask("clean-daily-reset", async () => {
+		const todayUtc = new Date().toISOString().split("T")[0]
+
+		try {
+			const expiredProjects = await db
+				.select({
+					id: projects.id,
+					coverImagePath: projects.coverImagePath,
+					screenshotPaths: projects.screenshotPaths,
+				})
+				.from(projects)
+				.where(lt(projects.showcaseDate, todayUtc))
+
+			if (expiredProjects.length === 0) {
+				fastify.log.info("Daily reset cleanup: No projects were deleted.")
+				return
+			}
+
+			const keysToDelete: { Key: string }[] = []
+			for (const p of expiredProjects) {
+				if (p.coverImagePath) keysToDelete.push({ Key: p.coverImagePath })
+				if (p.screenshotPaths && p.screenshotPaths.length > 0) {
+					p.screenshotPaths.forEach((path) => keysToDelete.push({ Key: path }))
+				}
+			}
+
+			if (keysToDelete.length > 0) {
+				const chunkSize = 1000
+				for (let i = 0; i < keysToDelete.length; i += chunkSize) {
+					const chunk = keysToDelete.slice(i, i + chunkSize)
+					await r2Client.send(
+						new DeleteObjectsCommand({
+							Bucket: BUCKET_NAME,
+							Delete: { Objects: chunk, Quiet: true },
+						}),
+					)
+				}
+			}
+
+			const expiredIds = expiredProjects.map((p) => p.id)
+			await db.delete(projects).where(inArray(projects.id, expiredIds))
+
+			fastify.log.info(
+				`Daily reset cleanup completed. Deleted ${expiredProjects.length} projects, and ${keysToDelete.length} assets.`,
+			)
+		} catch (error) {
+			fastify.log.error(error, "Daily reset cleanup failed:")
+		}
+	})
+
+	const dailyResetCleanupJob = new CronJob({ cronExpression: "0 0 * * *", timezone: "UTC" }, dailyResetCleanup)
+	fastify.scheduler.addCronJob(dailyResetCleanupJob)
+	fastify.addHook("onClose", (instance, done) => {
+		instance.scheduler.stop()
+		done()
+	})
 })
