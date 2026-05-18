@@ -12,6 +12,9 @@ export const DB_RULES = {
 
 	prefixProjectRefId: "P-",
 	lengthProjectRefId: 10, // bytes, a NanoID
+	get finalReferenceIdLength() {
+		return this.prefixProjectRefId.length + this.lengthProjectRefId
+	},
 
 	maxLengthProjectTitle: 128,
 	maxLengthProjectDescription: 256,

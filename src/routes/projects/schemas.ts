@@ -2,6 +2,12 @@ import { z } from "zod"
 
 import { DB_RULES } from "../../config/index.js"
 
+const tagRule = z
+	.string()
+	.startsWith("#", "Tag must start with a `#` character.")
+	.regex(/^#[a-z0-9-]+$/, "Tag must be lower case, and hypen-delimited (i.e, #deck-builder).")
+
+// #region Creator-related private requests
 export const reserveProjectSchema = z.object({
 	name: z
 		.string()
@@ -17,7 +23,7 @@ export const reserveProjectSchema = z.object({
 
 export const patchContentSchema = z.object({
 	description: z.string().max(DB_RULES.maxLengthProjectDescription).optional(),
-	tags: z.array(z.string()).max(DB_RULES.limitTags).optional(),
+	tags: z.array(tagRule).max(DB_RULES.limitTags).optional(),
 	features: z.array(z.string()).optional(),
 	coverImagePath: z.string().startsWith("projects/").endsWith(".webp").optional(),
 	screenshotPaths: z
@@ -43,7 +49,7 @@ export const publishContentSchema = z.object({
 			DB_RULES.maxLengthProjectDescription,
 			`Description cannot exceet ${DB_RULES.maxLengthProjectDescription} characters`,
 		),
-	tags: z.array(z.string()).min(1).max(DB_RULES.limitTags, `Maximum of ${DB_RULES.limitTags} tags allowed`),
+	tags: z.array(tagRule).min(1).max(DB_RULES.limitTags, `Maximum of ${DB_RULES.limitTags} tags allowed`),
 	coverImagePath: z.string().startsWith("projects/").endsWith(".wepb", "Cover image must be a WebP file."),
 	features: z.array(z.string()).optional(),
 	screenshotPaths: z
@@ -63,3 +69,22 @@ export const publishContentSchema = z.object({
 
 export type ReserveProjectPayload = z.infer<typeof reserveProjectSchema>
 export type PatchContentPayload = z.infer<typeof patchContentSchema>
+// #endregion
+
+// #region Audience-related public requests
+export const getProjectFeedQuerySchema = z.object({
+	page: z.coerce.number().int().min(1).default(1),
+	batchSize: z.coerce.number().int().min(1).max(16).default(8),
+	seed: z.string().optional(),
+	category: z.string().optional(),
+	platform: z.string().optional(),
+	tag: tagRule.optional(),
+})
+
+export const getSingleProjectParamsSchema = z.object({
+	referenceId: z.string().length(DB_RULES.finalReferenceIdLength, "Invalid DOOMLIT refrence ID format."),
+})
+
+export type GetProjectFeedQuery = z.infer<typeof getProjectFeedQuerySchema>
+export type GetSingleProjectParams = z.infer<typeof getSingleProjectParamsSchema>
+// #endregion

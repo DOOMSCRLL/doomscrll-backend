@@ -1,17 +1,24 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
-import { and, count, eq, sql } from "drizzle-orm"
+import { and, arrayContains, count, eq, or, sql, SQL } from "drizzle-orm"
 import { FastifyPluginAsyncZod } from "fastify-type-provider-zod"
 import { nanoid } from "nanoid"
 import { z } from "zod"
 
 import { DB_RULES } from "../../config/index.js"
 import { db } from "../../db/index.js"
-import { projectLedger, projects } from "../../db/schema.js"
+import { profiles, projectLedger, projects } from "../../db/schema.js"
 import { BUCKET_NAME, r2Client } from "../../lib/r2.js"
-import { patchContentSchema, publishContentSchema, reserveProjectSchema } from "./schemas.js"
+import {
+	getProjectFeedQuerySchema,
+	getSingleProjectParamsSchema,
+	patchContentSchema,
+	publishContentSchema,
+	reserveProjectSchema,
+} from "./schemas.js"
 
 export const projectRoutes: FastifyPluginAsyncZod = async (fastify) => {
+	// #region Private routes
 	fastify.post(
 		"reserve",
 		{
@@ -315,4 +322,111 @@ export const projectRoutes: FastifyPluginAsyncZod = async (fastify) => {
 			}
 		},
 	)
+	// #endregion
+
+	// #region Public routes
+	fastify.get(
+		"/",
+		{
+			schema: { querystring: getProjectFeedQuerySchema },
+		},
+		async (request, reply) => {
+			const { page, batchSize, seed, category, platform, tag } = request.query
+			const offset = (page - 1) * batchSize
+			const todayUtc = new Date().toISOString().split("T")[0]
+
+			try {
+				const conditions: SQL[] = [eq(projects.status, "ready"), eq(projects.showcaseDate, todayUtc)]
+
+				if (category) conditions.push(eq(projects.category, category))
+				if (tag) conditions.push(arrayContains(projects.tags, [tag]))
+				if (platform) {
+					conditions.push(
+						or(
+							eq(projects.primaryPlatform, platform),
+							sql`${projects.secondaryPlatforms} @> ${JSON.stringify([{ platform }])}::jsonb`,
+						) as SQL,
+					)
+				}
+
+				const orderByClause = seed ? sql`md5(${projects.referenceId} || ${seed})` : projects.referenceId
+
+				const feed = await db
+					.select({
+						referenceId: projects.referenceId,
+						name: projects.name,
+						category: projects.category,
+						tags: projects.tags,
+						coverImagePath: projects.coverImagePath,
+						creator: { username: profiles.username },
+					})
+					.from(projects)
+					.innerJoin(projectLedger, eq(projects.ledgerId, projectLedger.id))
+					.innerJoin(profiles, eq(projectLedger.profileId, profiles.id))
+					.where(and(...conditions))
+					.orderBy(orderByClause)
+					.limit(batchSize)
+					.offset(offset)
+
+				return reply.code(200).send({ success: true, data: feed })
+			} catch (error) {
+				request.log.error(error)
+				return reply.code(500).send({ success: false, error: "Failed to fetch daily DOOMLIT feed." })
+			}
+		},
+	)
+
+	fastify.get(
+		"/:referenceId",
+		{
+			schema: { params: getSingleProjectParamsSchema },
+		},
+		async (request, reply) => {
+			const { referenceId } = request.params
+			const todayUtc = new Date().toISOString().split("T")[0]
+
+			try {
+				const [project] = await db
+					.select({
+						referenceId: projects.referenceId,
+						name: projects.name,
+						category: projects.category,
+						primaryPlatform: projects.primaryPlatform,
+						primaryUrl: projects.primaryUrl,
+						description: projects.description,
+						tags: projects.tags,
+						features: projects.features,
+						coverImagePath: projects.coverImagePath,
+						screenshotPaths: projects.screenshotPaths,
+						secondaryPlatforms: projects.secondaryPlatforms,
+						videoUrl: projects.videoUrl,
+						creator: {
+							username: profiles.username,
+							description: profiles.description,
+							url: profiles.url,
+						},
+					})
+					.from(projects)
+					.innerJoin(projectLedger, eq(projects.ledgerId, projectLedger.id))
+					.innerJoin(profiles, eq(projectLedger.profileId, profiles.id))
+					.where(
+						and(
+							eq(projects.referenceId, referenceId),
+							eq(projects.status, "ready"),
+							eq(projects.showcaseDate, todayUtc),
+						),
+					)
+
+				if (!project)
+					return reply
+						.code(404)
+						.send({ success: false, error: `DOOMLIT with given reference ID is not found, or has expired.` })
+				else return reply.code(200).send({ success: true, data: project })
+			} catch (error) {
+				request.log.error(error)
+				return reply.code(500).send({ success: false, error: "Failed to fetch project details." })
+			}
+		},
+	)
+	// #endregion
 }
