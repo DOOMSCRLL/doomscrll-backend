@@ -4,6 +4,7 @@
 
 - [Tech Stack](#tech-stack)
 - [State Machines](#state-machines)
+- [Automated Workers (Cron & Intervals)](#automated-workers-cron--intervals)
 - [API Endpoints](#api-endpoints)
   - [Auth API](#auth-api)
   - [Profile API](#profile-api)
@@ -18,7 +19,7 @@
 - **PostgreSQL** as database
 - **Drizzle** as ORM
 - **zod** as schema verifier
-- **toad-scheduler** as background job scheduler _(DB cleanup, expired draft sweeping)_
+- **@fastify/schedule & toad-scheduler** as background job scheduler _(DB cleanup, ephemeral sweeps)_
 - **Plunk** as email delivery service
 - **Cloudflare R2** as image storage and CDN _(via @aws-sdk/client-s3)_
 - **Lemon Squeezy** as Merchant of Record / payment processor
@@ -33,19 +34,31 @@ The DOOMLIT architecture safely decouples the user's content journey from the fi
 
 ### DOOMLIT Lifecycle (`project_status` Enum)
 
+The `projects` table acts as a highly volatile 24-hour queue.
+
 1. `draft`: Ephemeral 15-minute reservation. Awaiting payment.
 2. `incomplete`: Payment succeeded. Awaiting required content uploads.
 3. `ready`: All required fields verified. Locked in for the showcase date.
-4. `showcased`: The showcase date has passed. Project is archived.
-5. `canceled`: Administrative override (e.g., chargeback, terms violation).
+4. `canceled`: Administrative override (e.g., chargeback, terms violation).
+   _Note: There is no "archived" state. At 00:00 UTC the day after a showcase, the project row is permanently deleted from the database._
 
 ### Financial Ledger (`receipt_status` Enum)
 
-Receipts are immutable historical records. They skip the pending phase entirely.
+Receipts and Ledger entries are immutable historical records. They skip the pending phase entirely.
 
 1. `succeeded`: Payment cleared, receipt generated.
 2. `refunded`: Creator was refunded via Lemon Squeezy dashboard.
 3. `disputed`: Creator initiated a bank chargeback.
+
+---
+
+## Automated Workers (Cron & Intervals)
+
+Background jobs that automatically maintain database health and enforce the platform's ephemeral rules.
+
+- **Expired Draft Cleanup:** Runs every 1 minute. Deletes any `draft` project whose 15-minute payment reservation window has expired.
+- **Auth Artifact Cleanup:** Runs every 1 hour. Wipes expired OTPs and inactive session tokens to prevent database bloat.
+- **Daily Reset Cleanup:** Strict CronJob anchored to `00:00 UTC`. Identifies all DOOMLITs from the previous day, safely chunks and deletes their `.webp` assets from Cloudflare R2 to prevent storage bloat, and completely deletes the rows from the `projects` table.
 
 ---
 
@@ -80,7 +93,12 @@ Receipts are immutable historical records. They skip the pending phase entirely.
 
 ### Projects API (DOOMLITs)
 
-#### Protected end-points:
+#### Public end-points (Consumer):
+
+- `GET /projects`: Fetches a batched feed of today's active DOOMLITs (`status = 'ready'`). Supports dynamic filtering (`category`, `tag`, and deep JSONB search for `platform`) and utilizes an MD5 hash `seed` parameter for consistent randomized pagination on the client.
+- `GET /projects/:referenceId`: Fetches full details of a specific DOOMLIT for deep linking. Fails with a 404 if the project is not scheduled for the current UTC day.
+
+#### Protected end-points (Creator):
 
 - `POST /projects/reserve`: The transaction bouncer. Verifies UTC deadzones, enforces the 256 daily slot limit, and checks the `project_ledger` for the 14-day anti-abuse cooldown. Creates a `draft` and returns the `referenceId`.
 - `POST /projects/:referenceId/upload-urls`: The CDN broker. Generates and returns time-limited, pre-signed Cloudflare R2 URLs for direct client-to-CDN `.webp` image uploads.
