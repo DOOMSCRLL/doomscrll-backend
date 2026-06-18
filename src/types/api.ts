@@ -4,6 +4,7 @@ export type ApiErrorCode =
 	| "DEADZONE_ACTIVE"
 	| "MONTHLY_LIMIT_REACHED"
 	| "COOLDOWN_ACTIVE"
+	| "INTERNAL_ERROR"
 
 export interface ApiError<T> {
 	code: ApiErrorCode

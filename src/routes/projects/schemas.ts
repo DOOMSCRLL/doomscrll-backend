@@ -7,6 +7,15 @@ const tagRule = z
 	.startsWith("#", "Tag must start with a `#` character.")
 	.regex(/^#[a-z0-9-]+$/, "Tag must be lower case, and hypen-delimited (i.e, #deck-builder).")
 
+export const apiErrorResponseSchema = z.object({
+	success: z.literal(false),
+	error: z.object({
+		code: z.string(),
+		message: z.string(),
+		details: z.record(z.string(), z.any()).optional(),
+	}),
+})
+
 // #region Creator-related private requests
 export const reserveProjectSchema = z.object({
 	name: z
@@ -87,4 +96,38 @@ export const getSingleProjectParamsSchema = z.object({
 
 export type GetProjectFeedQuery = z.infer<typeof getProjectFeedQuerySchema>
 export type GetSingleProjectParams = z.infer<typeof getSingleProjectParamsSchema>
+
+export const getReservationCountsQuerySchema = z.object({
+	year: z.coerce.number().int().min(2026).optional(),
+	month: z.coerce.number().int().min(1).max(12).optional(),
+})
+
+export const getReservationCountsResponseSchema = z.object({
+	success: z.boolean(),
+	data: z.object({
+		meta: z.object({
+			year: z.number().int(),
+			month: z.number().int(),
+			maxReservationsPerDay: z.number().int(),
+		}),
+		counts: z.record(z.string(), z.number().int()),
+	}),
+})
+export type GetReservationCountsQuery = z.infer<typeof getReservationCountsQuerySchema>
+
+export const getProjectRulesResponseSchema = z.object({
+	success: z.literal(true),
+	data: z.object({
+		maxReservationsPerDay: z.number().int(),
+		reservationWindowDays: z.number().int(),
+		cooldownPeriodDays: z.number().int(),
+		draftExpirationMinutes: z.number().int(),
+		deadzoneWindow: z.object({
+			start: z.string(),
+			end: z.string(),
+			timezone: z.literal("UTC"),
+		}),
+	}),
+})
+export type GetProjectRulesResponse = z.infer<typeof getProjectRulesResponseSchema>
 // #endregion

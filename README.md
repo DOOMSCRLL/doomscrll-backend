@@ -93,8 +93,10 @@ Background jobs that automatically maintain database health and enforce the plat
 
 ### Projects API (DOOMLITs)
 
-#### Public end-points (Consumer):
+#### Public end-points (Consumer & System Configuration):
 
+- `GET /projects/rules`: Exposes backend configuration constants (e.g., daily slot limits, deadzones, cooldown periods) to dynamically synchronize the frontend UI components.
+- `GET /projects/reservation-counts`: Returns an optimized key-value map of active reservation counts per day for a given month and year, enabling the frontend calendar to instantly render slot availability.
 - `GET /projects`: Fetches a batched feed of today's active DOOMLITs (`status = 'ready'`). Supports dynamic filtering (`category`, `tag`, and deep JSONB search for `platform`) and utilizes an MD5 hash `seed` parameter for consistent randomized pagination on the client.
 - `GET /projects/:referenceId`: Fetches full details of a specific DOOMLIT for deep linking. Fails with a 404 if the project is not scheduled for the current UTC day.
 

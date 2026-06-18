@@ -1,6 +1,6 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
-import { and, arrayContains, count, eq, or, sql, SQL } from "drizzle-orm"
+import { and, arrayContains, count, eq, gte, inArray, lte, or, sql, SQL } from "drizzle-orm"
 import { FastifyPluginAsyncZod } from "fastify-type-provider-zod"
 import { nanoid } from "nanoid"
 import { z } from "zod"
@@ -10,7 +10,12 @@ import { db } from "../../db/index.js"
 import { profiles, projectLedger, projects } from "../../db/schema.js"
 import { BUCKET_NAME, r2Client } from "../../lib/r2.js"
 import {
+	apiErrorResponseSchema,
 	getProjectFeedQuerySchema,
+	getProjectRulesResponseSchema,
+	GetReservationCountsQuery,
+	getReservationCountsQuerySchema,
+	getReservationCountsResponseSchema,
 	getSingleProjectParamsSchema,
 	patchContentSchema,
 	publishContentSchema,
@@ -425,6 +430,111 @@ export const projectRoutes: FastifyPluginAsyncZod = async (fastify) => {
 			} catch (error) {
 				request.log.error(error)
 				return reply.code(500).send({ success: false, error: "Failed to fetch project details." })
+			}
+		},
+	)
+
+	fastify.get(
+		"/rules",
+		{
+			schema: {
+				response: {
+					200: getProjectRulesResponseSchema,
+					500: apiErrorResponseSchema,
+				},
+			},
+		},
+		async (request, reply) => {
+			try {
+				return reply.code(200).send({
+					success: true,
+					data: {
+						maxReservationsPerDay: DB_RULES.limitDailySlots,
+						reservationWindowDays: DB_RULES.limitReservationWindow,
+						cooldownPeriodDays: DB_RULES.durationProjectCooldown,
+						draftExpirationMinutes: DB_RULES.durationPaymentTimeout,
+						deadzoneWindow: {
+							start: `${String(DB_RULES.hourUTCDeadzone).padStart(2, "0")}:00`,
+							end: DB_RULES.timeUTCServerReset,
+							timezone: "UTC",
+						},
+					},
+				})
+			} catch (error) {
+				request.log.error(error)
+				return reply.code(500).send({
+					success: false,
+					error: {
+						code: "INTERNAL_ERROR",
+						message: "Failed to fetch project rules.",
+					},
+				})
+			}
+		},
+	)
+
+	fastify.get(
+		"/reservation-counts",
+		{
+			schema: {
+				querystring: getReservationCountsQuerySchema,
+				response: { 200: getReservationCountsResponseSchema, 500: apiErrorResponseSchema },
+			},
+		},
+		async (request, reply) => {
+			const { year, month } = request.query as GetReservationCountsQuery
+
+			const now = new Date()
+			const targetYear = year ?? now.getUTCFullYear()
+			const targetMonth = month ?? now.getUTCMonth() + 1
+
+			const startStr = `${targetYear}-${String(targetMonth).padStart(2, "0")}-01`
+			const lastDay = new Date(Date.UTC(targetYear, targetMonth, 0)).getUTCDate()
+			const endStr = `${targetYear}-${String(targetMonth).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`
+
+			try {
+				const rawCounts = await db
+					.select({
+						date: projects.showcaseDate,
+						activeCount: count(),
+					})
+					.from(projects)
+					.where(
+						and(
+							inArray(projects.status, ["incomplete", "ready"]),
+							gte(projects.showcaseDate, startStr),
+							lte(projects.showcaseDate, endStr),
+						),
+					)
+					.groupBy(projects.showcaseDate)
+
+				const countMap: Record<string, number> = {}
+				for (const row of rawCounts) {
+					if (row.date) {
+						countMap[row.date] = Number(row.activeCount)
+					}
+				}
+
+				return reply.code(200).send({
+					success: true,
+					data: {
+						meta: {
+							year: targetYear,
+							month: targetMonth,
+							maxReservationsPerDay: DB_RULES.limitDailySlots,
+						},
+						counts: countMap,
+					},
+				})
+			} catch (error) {
+				request.log.error(error)
+				return reply.code(500).send({
+					success: false,
+					error: {
+						code: "INTERNAL_ERROR",
+						message: "Failed to fetch monthly reservation counts.",
+					},
+				})
 			}
 		},
 	)
