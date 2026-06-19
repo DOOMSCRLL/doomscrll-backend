@@ -24,7 +24,17 @@
 - **Cloudflare R2** as image storage and CDN _(via @aws-sdk/client-s3)_
 - **Lemon Squeezy** as Merchant of Record / payment processor
 - **Docker** for containers
-- **Bruno** for API testing
+- **Vitest** for integration testing and TDD
+
+---
+
+## Architecture
+
+The backend follows a strict **Service-Controller-Route** pattern for maximum testability:
+
+- **Routes (`src/routes`)**: Defines Fastify endpoints, HTTP methods, and Zod validation schemas.
+- **Controllers (`src/controllers`)**: Manages HTTP context (Request/Reply) and passes typed payloads to services.
+- **Services (`src/services`)**: Contains pure, decoupled business logic and handles direct DB/third-party API interactions.
 
 ---
 

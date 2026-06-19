@@ -84,7 +84,6 @@ export type PatchContentPayload = z.infer<typeof patchContentSchema>
 export const getProjectFeedQuerySchema = z.object({
 	page: z.coerce.number().int().min(1).default(1),
 	batchSize: z.coerce.number().int().min(1).max(16).default(8),
-	seed: z.string().optional(),
 	category: z.string().optional(),
 	platform: z.string().optional(),
 	tag: tagRule.optional(),

@@ -1,15 +1,8 @@
-import crypto from "node:crypto"
-
-import PlunkModule from "@plunk/node"
-import { and, eq, gt } from "drizzle-orm"
 import { FastifyPluginAsync } from "fastify"
 import { ZodTypeProvider } from "fastify-type-provider-zod"
 import { z } from "zod"
 
-import { otpCodes, profiles, sessions } from "../../db/schema.js"
-
-const Plunk = PlunkModule.default || PlunkModule
-const plunk = new Plunk(process.env.PLUNK_API_KEY || "dev-key")
+import { AuthController } from "../../controllers/auth.controller.js"
 
 const authRoutes: FastifyPluginAsync = async (fastify) => {
 	const typedFastify = fastify.withTypeProvider<ZodTypeProvider>()
@@ -25,40 +18,11 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
 			},
 			schema: {
 				body: z.object({
-					email: z.string().email("Please provide a valid email address"),
+					email: z.email("Please provide a valid email address"),
 				}),
 			},
 		},
-		async (request, reply) => {
-			const { email } = request.body
-
-			const plainOtp = crypto.randomInt(100000, 999999).toString()
-			const hash = crypto.createHash("sha256").update(plainOtp).digest("hex")
-			const expiresAt = new Date(Date.now() + 10 * 60 * 1000)
-
-			await fastify.db.insert(otpCodes).values({
-				email,
-				codeHash: hash,
-				expiresAt,
-			})
-
-			if (process.env.NODE_ENV === "development") {
-				fastify.log.info(`\n****************`)
-				fastify.log.info(`\tEMAIL OTP FOR ${email}: ${plainOtp}`)
-				fastify.log.info(`****************\n`)
-			} else {
-				await plunk.emails.send({
-					to: email,
-					subject: "Your DOOMSCRLL login code",
-					body: `<h1>Welcome to DOOMSCRLL</h1><p>Your secure sign-in code is: <strong>${plainOtp}</strong>.</p><p>This code expires in 10 minutes.</p>`,
-				})
-			}
-
-			return reply.send({
-				success: true,
-				message: "If the email is valid, a code was sent.",
-			})
-		},
+		AuthController.requestOtp,
 	)
 
 	typedFastify.post(
@@ -66,74 +30,17 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
 		{
 			schema: {
 				body: z.object({
-					email: z.string().email("Invalid email format"),
+					email: z.email("Invalid email format"),
 					code: z.string().length(6, "Code must be exactly 6 digits."),
 				}),
 			},
 		},
-		async (request, reply) => {
-			const { email, code } = request.body
-			const inputHash = crypto.createHash("sha256").update(code).digest("hex")
-
-			const [validOtp] = await fastify.db
-				.select()
-				.from(otpCodes)
-				.where(and(eq(otpCodes.email, email), eq(otpCodes.codeHash, inputHash), gt(otpCodes.expiresAt, new Date())))
-				.limit(1)
-
-			if (!validOtp) {
-				return reply.code(401).send({ error: "Invalid or expired code." })
-			}
-
-			await fastify.db.delete(otpCodes).where(eq(otpCodes.id, validOtp.id))
-
-			let [user] = await fastify.db.select().from(profiles).where(eq(profiles.email, email)).limit(1)
-
-			if (!user) {
-				const baseName = email
-					.split("@")[0]
-					.replace(/[^a-zA-Z0-9]/g, "")
-					.toLowerCase()
-				const randomSuffix = crypto.randomBytes(3).toString("hex")
-				const generatedUserName = `${baseName}_${randomSuffix}`
-
-				;[user] = await fastify.db.insert(profiles).values({ email: email, username: generatedUserName }).returning()
-			}
-
-			const sessionId = crypto.randomBytes(32).toString("hex")
-			const sessionExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
-
-			await fastify.db.insert(sessions).values({
-				id: sessionId,
-				profileId: user.id,
-				expiresAt: sessionExpiry,
-			})
-
-			reply.setCookie("session_id", sessionId, {
-				path: "/",
-				httpOnly: true,
-				secure: process.env.NODE_ENV === "production",
-				sameSite: "lax",
-				expires: sessionExpiry,
-			})
-
-			return reply.send({ success: true, message: "Welcome to DOOMSCRLL." })
-		},
+		AuthController.verifyOtp,
 	)
 
-	typedFastify.post("/logout", async (request, reply) => {
-		const sessionId = request.cookies.session_id
+	typedFastify.get("/csrf", { preValidation: [fastify.authenticate] }, AuthController.getCsrfToken)
 
-		if (sessionId) await fastify.db.delete(sessions).where(eq(sessions.id, sessionId))
-
-		reply.clearCookie("session_id", {
-			path: "/",
-			httpOnly: true,
-			secure: process.env.NODE_ENV === "production",
-			sameSite: "lax",
-		})
-		return reply.send({ success: true, message: "Logged out successfully." })
-	})
+	typedFastify.post("/logout", { preValidation: [fastify.authenticate, fastify.csrfProtection] }, AuthController.logout)
 }
 
 export default authRoutes
