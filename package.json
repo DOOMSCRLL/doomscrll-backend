@@ -18,7 +18,9 @@
 		"format": "prettier --write .",
 		"lint": "prettier --check . && eslint .",
 		"lint:fix": "eslint src/**/*.ts --fix",
-		"type-check": "tsc --noEmit"
+		"type-check": "tsc --noEmit",
+		"db:seed": "node --loader ts-node/esm src/scripts/seed.ts",
+		"db:seed:projects": "node --loader ts-node/esm src/scripts/seed-projects.ts"
 	},
 	"dependencies": {
 		"@aws-sdk/client-s3": "^3.1048.0",
