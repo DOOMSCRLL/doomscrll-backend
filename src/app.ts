@@ -4,7 +4,7 @@ import { fileURLToPath } from "url"
 import AutoLoad, { AutoloadPluginOptions } from "@fastify/autoload"
 import cors from "@fastify/cors"
 import fastifyRateLimit from "@fastify/rate-limit"
-import { FastifyPluginAsync, FastifyServerOptions } from "fastify"
+import { FastifyPluginAsync, FastifyServerOptions, FastifyError } from "fastify"
 import { serializerCompiler, validatorCompiler } from "fastify-type-provider-zod"
 
 const __filename = fileURLToPath(import.meta.url)
@@ -25,20 +25,37 @@ const app: FastifyPluginAsync<AppOptions> = async (fastify, opts): Promise<void>
 		timeWindow: "1 minute",
 	})
 
+	fastify.setErrorHandler((error: FastifyError, request, reply) => {
+		reply.status(error.statusCode || 500).send({
+			success: false,
+			error: {
+				code: error.code || "INTERNAL_SERVER_ERROR",
+				message: error.message || "Internal Server Error",
+				details: error.validation || undefined,
+			},
+		})
+	})
+
 	await fastify.register(cors, {
 		origin: (origin, cb) => {
 			// For mobile app requests, and server-to-server requests
 			if (!origin) return cb(null, true)
 
+			if (process.env.NODE_ENV === "development") {
+				return cb(null, true)
+			}
+
 			const allowedOrigins = [
-				"http://localhost:5173", // Svelte dev localhost
-				"http://127.0.0.1:5173", // Svelte dev public IP
 				"https://doomlit.doomscrll.com", // DOOMLIT reservation app
 				"https://doomscrll.com", // Landing page
 			]
 
-			if (allowedOrigins.includes(origin)) return cb(null, true)
-			else return cb(new Error("Request not allowed by CORS."), false)
+			if (allowedOrigins.includes(origin)) {
+				return cb(null, true)
+			} else {
+				console.log(`CORS error: request rejected for origin: ${origin}`)
+				return cb(new Error("Request not allowed by CORS."), false)
+			}
 		},
 		credentials: true,
 	})
