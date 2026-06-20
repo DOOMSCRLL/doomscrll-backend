@@ -66,9 +66,11 @@ export const projectRoutes: FastifyPluginAsyncZod = async (fastify) => {
 	// #region Private routes
 	fastify.register(async (privateRoutes) => {
 		privateRoutes.addHook("preHandler", fastify.authenticate)
-		privateRoutes.addHook("preHandler", async (request, reply) => {
+		privateRoutes.addHook("preHandler", (request, reply, done) => {
 			if (["POST", "PATCH", "PUT", "DELETE"].includes(request.method)) {
-				await fastify.csrfProtection(request, reply)
+				fastify.csrfProtection(request, reply, done)
+			} else {
+				done()
 			}
 		})
 
