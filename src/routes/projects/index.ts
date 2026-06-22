@@ -6,6 +6,8 @@ import { ProjectsController } from "../../controllers/projects.controller.js"
 import {
 	apiErrorResponseSchema,
 	getProjectFeedQuerySchema,
+	getProjectPreviewQuerySchema,
+	getProjectPreviewResponseSchema,
 	getProjectRulesResponseSchema,
 	getReservationCountsQuerySchema,
 	getReservationCountsResponseSchema,
@@ -24,6 +26,18 @@ export const projectRoutes: FastifyPluginAsyncZod = async (fastify) => {
 				config: { rateLimit: { max: 100, timeWindow: "1 minute" } },
 			},
 			ProjectsController.getProjectFeed,
+		)
+
+		publicRoutes.get(
+			"/preview",
+			{
+				schema: {
+					querystring: getProjectPreviewQuerySchema,
+					response: { 200: getProjectPreviewResponseSchema, 400: apiErrorResponseSchema, 500: apiErrorResponseSchema },
+				},
+				config: { rateLimit: { max: 60, timeWindow: "1 minute" } },
+			},
+			ProjectsController.getProjectPreviews,
 		)
 
 		publicRoutes.get(

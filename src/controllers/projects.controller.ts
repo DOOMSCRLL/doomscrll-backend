@@ -1,6 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify"
 import { ProjectsService } from "../services/projects.service.js"
-import { GetReservationCountsQuery } from "../routes/projects/schemas.js"
+import { GetProjectPreviewQuery, GetReservationCountsQuery } from "../routes/projects/schemas.js"
 
 export class ProjectsController {
 	static async reserve(request: FastifyRequest<{ Body: any }>, reply: FastifyReply) {
@@ -141,6 +141,32 @@ export class ProjectsController {
 		} catch (error) {
 			request.log.error(error)
 			return reply.code(500).send({ success: false, error: "Failed to fetch daily DOOMLIT feed." })
+		}
+	}
+
+	static async getProjectPreviews(
+		request: FastifyRequest<{ Querystring: GetProjectPreviewQuery }>,
+		reply: FastifyReply,
+	) {
+		const { date } = request.query
+
+		const todayUtc = new Date().toISOString().split("T")[0]
+		if (date <= todayUtc) {
+			return reply.code(400).send({
+				success: false,
+				error: { code: "INVALID_DATE", message: "Queried date must be in the future." },
+			})
+		}
+
+		try {
+			const previews = await ProjectsService.getProjectPreviews(date)
+			return reply.code(200).send({ success: true, data: previews })
+		} catch (error) {
+			request.log.error(error)
+			return reply.code(500).send({
+				success: false,
+				error: { code: "INTERNAL_ERROR", message: "Failed to fetch project previews." },
+			})
 		}
 	}
 

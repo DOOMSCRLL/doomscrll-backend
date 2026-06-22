@@ -96,6 +96,23 @@ export const getSingleProjectParamsSchema = z.object({
 export type GetProjectFeedQuery = z.infer<typeof getProjectFeedQuerySchema>
 export type GetSingleProjectParams = z.infer<typeof getSingleProjectParamsSchema>
 
+export const getProjectPreviewQuerySchema = z.object({
+	date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be strictly YYYY-MM-DD to prevent timezone shifting"),
+})
+export type GetProjectPreviewQuery = z.infer<typeof getProjectPreviewQuerySchema>
+
+export const projectPreviewSchema = z.object({
+	name: z.string(),
+	category: z.string(),
+	tags: z.array(z.string()).nullable(),
+	authorUsername: z.string(),
+})
+
+export const getProjectPreviewResponseSchema = z.object({
+	success: z.boolean(),
+	data: z.array(projectPreviewSchema),
+})
+
 export const getReservationCountsQuerySchema = z.object({
 	year: z.coerce.number().int().min(2026).optional(),
 	month: z.coerce.number().int().min(1).max(12).optional(),

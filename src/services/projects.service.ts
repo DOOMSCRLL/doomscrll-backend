@@ -242,6 +242,22 @@ export class ProjectsService {
 		return feed
 	}
 
+	static async getProjectPreviews(date: string) {
+		const previews = await db
+			.select({
+				name: projects.name,
+				category: projects.category,
+				tags: projects.tags,
+				authorUsername: profiles.username,
+			})
+			.from(projects)
+			.innerJoin(projectLedger, eq(projects.ledgerId, projectLedger.id))
+			.innerJoin(profiles, eq(projectLedger.profileId, profiles.id))
+			.where(and(eq(projects.showcaseDate, date), inArray(projects.status, ["incomplete", "ready"])))
+
+		return previews
+	}
+
 	static async getSingleProject(referenceId: string) {
 		const todayUtc = new Date().toISOString().split("T")[0]
 
