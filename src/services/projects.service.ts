@@ -253,13 +253,7 @@ export class ProjectsService {
 			.from(projects)
 			.innerJoin(projectLedger, eq(projects.ledgerId, projectLedger.id))
 			.innerJoin(profiles, eq(projectLedger.profileId, profiles.id))
-			.where(
-				and(
-					eq(projects.showcaseDate, date),
-					eq(projects.category, category),
-					inArray(projects.status, ["incomplete", "ready"]),
-				),
-			)
+			.where(and(eq(projects.showcaseDate, date), eq(projects.category, category), eq(projects.status, "ready")))
 
 		return previews
 	}
