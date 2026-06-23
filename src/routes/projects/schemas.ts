@@ -98,6 +98,7 @@ export type GetSingleProjectParams = z.infer<typeof getSingleProjectParamsSchema
 
 export const getProjectPreviewQuerySchema = z.object({
 	date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be strictly YYYY-MM-DD to prevent timezone shifting"),
+	category: z.string(),
 })
 export type GetProjectPreviewQuery = z.infer<typeof getProjectPreviewQuerySchema>
 

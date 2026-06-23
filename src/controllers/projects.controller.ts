@@ -148,7 +148,7 @@ export class ProjectsController {
 		request: FastifyRequest<{ Querystring: GetProjectPreviewQuery }>,
 		reply: FastifyReply,
 	) {
-		const { date } = request.query
+		const { date, category } = request.query
 
 		const todayUtc = new Date().toISOString().split("T")[0]
 		if (date <= todayUtc) {
@@ -159,7 +159,7 @@ export class ProjectsController {
 		}
 
 		try {
-			const previews = await ProjectsService.getProjectPreviews(date)
+			const previews = await ProjectsService.getProjectPreviews(date, category)
 			return reply.code(200).send({ success: true, data: previews })
 		} catch (error) {
 			request.log.error(error)

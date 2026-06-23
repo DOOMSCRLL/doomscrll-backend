@@ -242,7 +242,7 @@ export class ProjectsService {
 		return feed
 	}
 
-	static async getProjectPreviews(date: string) {
+	static async getProjectPreviews(date: string, category: string) {
 		const previews = await db
 			.select({
 				name: projects.name,
@@ -253,7 +253,13 @@ export class ProjectsService {
 			.from(projects)
 			.innerJoin(projectLedger, eq(projects.ledgerId, projectLedger.id))
 			.innerJoin(profiles, eq(projectLedger.profileId, profiles.id))
-			.where(and(eq(projects.showcaseDate, date), inArray(projects.status, ["incomplete", "ready"])))
+			.where(
+				and(
+					eq(projects.showcaseDate, date),
+					eq(projects.category, category),
+					inArray(projects.status, ["incomplete", "ready"]),
+				),
+			)
 
 		return previews
 	}
