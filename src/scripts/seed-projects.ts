@@ -87,6 +87,30 @@ async function seedProjects() {
 				]
 				const category = CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)]
 
+				const POOL_TAGS = [
+					"action",
+					"rpg",
+					"indie",
+					"multiplayer",
+					"strategy",
+					"open-source",
+					"tool",
+					"pixel-art",
+					"story-rich",
+					"co-op",
+					"puzzle",
+					"sandbox",
+					"adventure",
+				]
+				const numTags = Math.floor(Math.random() * 5) + 1
+				const projectTags = []
+				const availableTags = [...POOL_TAGS]
+				for (let t = 0; t < numTags; t++) {
+					const tagIndex = Math.floor(Math.random() * availableTags.length)
+					projectTags.push(availableTags[tagIndex])
+					availableTags.splice(tagIndex, 1)
+				}
+
 				totalProjects.push({
 					id: projectId,
 					referenceId: generateRefId(),
@@ -98,7 +122,7 @@ async function seedProjects() {
 					primaryPlatform: "Web",
 					primaryUrl,
 					description: "This is a mock project generated for testing.",
-					tags: ["mock", "test", `day-${day}`],
+					tags: projectTags,
 				})
 			}
 		}
