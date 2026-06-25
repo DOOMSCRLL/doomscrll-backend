@@ -71,6 +71,22 @@ async function seedProjects() {
 					lastShowcaseDate: showcaseDateStr,
 				})
 
+				const CATEGORIES = [
+					"Video Games",
+					"Tabletop",
+					"Software & Tools",
+					"Digital Assets",
+					"Publishing",
+					"Audio",
+					"Video",
+					"Goods",
+					"Food",
+					"Local",
+					"Internal_Socials",
+					"Internal_Crowdfunding",
+				]
+				const category = CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)]
+
 				totalProjects.push({
 					id: projectId,
 					referenceId: generateRefId(),
@@ -78,7 +94,7 @@ async function seedProjects() {
 					showcaseDate: showcaseDateStr,
 					status,
 					name: `Mock Project ${day}/${month} #${i}`,
-					category: "Tech",
+					category,
 					primaryPlatform: "Web",
 					primaryUrl,
 					description: "This is a mock project generated for testing.",

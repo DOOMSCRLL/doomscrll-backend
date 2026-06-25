@@ -27,7 +27,7 @@ describe("Profile Routes", () => {
 		fastify.decorate("authenticate", async (request: any, reply: any) => {
 			request.user = { id: "test-user-id" }
 		})
-		fastify.decorate("csrfProtection", async () => {})
+		fastify.decorate("csrfProtection", (req: any, res: any, done: any) => done())
 
 		await fastify.register(profileRoutes, { prefix: "/profile" })
 		await fastify.ready()

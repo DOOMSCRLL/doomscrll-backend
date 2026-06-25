@@ -12,6 +12,7 @@ vi.mock("../src/services/projects.service.js", () => {
 			updateProject: vi.fn(),
 			publishProject: vi.fn(),
 			getProjectFeed: vi.fn(),
+			getProjectPreviews: vi.fn(),
 			getSingleProject: vi.fn(),
 			getRules: vi.fn(),
 			getReservationCounts: vi.fn(),
@@ -31,7 +32,7 @@ describe("Project Routes", () => {
 		fastify.decorate("authenticate", async (request: any, reply: any) => {
 			request.user = { id: "test-user-id" }
 		})
-		fastify.decorate("csrfProtection", async () => {})
+		fastify.decorate("csrfProtection", (req: any, res: any, done: any) => done())
 
 		await fastify.register(projectRoutes, { prefix: "/projects" })
 		await fastify.ready()
@@ -105,5 +106,33 @@ describe("Project Routes", () => {
 
 		expect(response.statusCode).toBe(200)
 		expect(response.json().data.name).toBe("Found Project")
+	})
+
+	it("should parse query string properly when fetching previews", async () => {
+		const mockPreviews = [
+			{
+				name: "Mock Previews",
+				category: "Software & Tools",
+				tags: ["test"],
+				authorUsername: "test",
+			},
+		]
+		vi.mocked(ProjectsService.getProjectPreviews).mockResolvedValue(mockPreviews as any)
+
+		// 1. Properly URL-encoded space and ampersand
+		const validRes = await fastify.inject({
+			method: "GET",
+			url: "/projects/preview?date=2099-12-31&category=Software%20%26%20Tools",
+		})
+		expect(validRes.statusCode).toBe(200)
+		expect(ProjectsService.getProjectPreviews).toHaveBeenCalledWith("2099-12-31", "Software & Tools")
+
+		// 2. Unencoded ampersand (will be parsed as separator, dropping 'Tools')
+		const invalidRes = await fastify.inject({
+			method: "GET",
+			url: "/projects/preview?date=2099-12-31&category=Software & Tools",
+		})
+		expect(invalidRes.statusCode).toBe(200)
+		expect(ProjectsService.getProjectPreviews).toHaveBeenCalledWith("2099-12-31", "Software ")
 	})
 })
