@@ -88,21 +88,28 @@ async function seedProjects() {
 				const category = CATEGORIES[Math.floor(Math.random() * CATEGORIES.length)]
 
 				const POOL_TAGS = [
-					"action",
-					"rpg",
-					"indie",
-					"multiplayer",
-					"strategy",
-					"open-source",
-					"tool",
-					"pixel-art",
-					"story-rich",
-					"co-op",
-					"puzzle",
-					"sandbox",
-					"adventure",
+					"#action",
+					"#rpg",
+					"#indie",
+					"#multiplayer",
+					"#strategy",
+					"#open-source",
+					"#tool",
+					"#pixel-art",
+					"#story-rich",
+					"#co-op",
+					"#puzzle",
+					"#sandbox",
+					"#adventure",
+					"#casual",
+					"#simulation",
+					"#sports",
+					"#racing",
+					"#fighting",
+					"#horror",
+					"#survival",
 				]
-				const numTags = Math.floor(Math.random() * 5) + 1
+				const numTags = Math.floor(Math.random() * 3) + 3 // 3 to 5 tags
 				const projectTags = []
 				const availableTags = [...POOL_TAGS]
 				for (let t = 0; t < numTags; t++) {

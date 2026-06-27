@@ -20,7 +20,9 @@
 		"lint:fix": "eslint src/**/*.ts --fix",
 		"type-check": "tsc --noEmit",
 		"db:seed": "node --loader ts-node/esm src/scripts/seed.ts",
-		"db:seed:projects": "node --loader ts-node/esm src/scripts/seed-projects.ts"
+		"db:seed:projects": "node --loader ts-node/esm src/scripts/seed-projects.ts",
+		"db:clear:projects": "node --loader ts-node/esm src/scripts/clear-projects.ts",
+		"db:seed:games-tomorrow": "node --loader ts-node/esm src/scripts/seed-games-tomorrow.ts"
 	},
 	"dependencies": {
 		"@aws-sdk/client-s3": "^3.1048.0",
