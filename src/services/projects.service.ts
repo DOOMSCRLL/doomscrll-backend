@@ -1,6 +1,6 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
-import { and, arrayContains, count, eq, gte, inArray, lte, or, sql, SQL } from "drizzle-orm"
+import { and, arrayContains, count, eq, gte, inArray, lte, or, sql, SQL, ne } from "drizzle-orm"
 import { nanoid } from "nanoid"
 
 import { DB_RULES } from "../config/index.js"
@@ -44,7 +44,7 @@ export class ProjectsService {
 				const [slotCount] = await tx
 					.select({ value: count() })
 					.from(projects)
-					.where(and(eq(projects.showcaseDate, payload.showcaseDate), sql`${projects.status} != 'failed'`))
+					.where(and(eq(projects.showcaseDate, payload.showcaseDate), ne(projects.status, "canceled")))
 
 				if (slotCount.value >= DB_RULES.limitDailySlots) {
 					throw new ServiceError("SLOT_UNAVAILABLE")
