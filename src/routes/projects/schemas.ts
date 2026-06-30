@@ -120,8 +120,9 @@ export const getDraftResponseSchema = z.object({
 		referenceId: z.string(),
 		name: z.string(),
 		status: z.string(),
-		showcaseDate: z.string(),
-		reservedAt: z.string(),
+		showcaseDate: z.coerce.string(),
+		reservedAt: z.coerce.string(),
+		authorHandle: z.string(),
 	}),
 })
 

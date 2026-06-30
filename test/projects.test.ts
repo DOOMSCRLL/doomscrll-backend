@@ -118,6 +118,7 @@ describe("Project Routes", () => {
 				status: "draft",
 				showcaseDate: "2099-12-31",
 				reservedAt: new Date().toISOString(),
+				authorHandle: "testuser",
 			},
 		} as any)
 

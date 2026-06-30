@@ -261,7 +261,7 @@ export class ProjectsService {
 	static async getDraft(referenceId: string, profileId: string) {
 		const [draft] = await db
 			.select({
-						referenceId: projects.referenceId,
+				referenceId: projects.referenceId,
 				name: projects.name,
 				status: projects.status,
 				showcaseDate: projects.showcaseDate,
@@ -271,12 +271,7 @@ export class ProjectsService {
 			.from(projects)
 			.innerJoin(projectLedger, eq(projects.ledgerId, projectLedger.id))
 			.innerJoin(profiles, eq(projectLedger.profileId, profiles.id))
-			.where(
-				and(
-					eq(projects.referenceId, referenceId),
-					eq(projectLedger.profileId, profileId)
-				),
-			)
+			.where(and(eq(projects.referenceId, referenceId), eq(projectLedger.profileId, profileId)))
 
 		if (!draft) {
 			return { error: "NOT_FOUND" }
@@ -295,8 +290,8 @@ export class ProjectsService {
 				and(
 					eq(projects.referenceId, referenceId),
 					eq(projectLedger.profileId, profileId),
-					eq(projects.status, "draft")
-				)
+					eq(projects.status, "draft"),
+				),
 			)
 
 		if (!draft) {
@@ -304,7 +299,7 @@ export class ProjectsService {
 		}
 
 		// Delete the project (and maybe ledger, depending on ON DELETE cascade or business logic)
-		// Since projects has a foreign key to projectLedger, we delete the project. 
+		// Since projects has a foreign key to projectLedger, we delete the project.
 		// If ledger is 1:1, we should probably delete the ledger.
 		await db.delete(projectLedger).where(eq(projectLedger.id, draft.ledgerId))
 
