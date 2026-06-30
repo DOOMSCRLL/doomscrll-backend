@@ -170,6 +170,30 @@ export class ProjectsController {
 		}
 	}
 
+	static async getDraft(request: FastifyRequest<{ Params: { referenceId: string } }>, reply: FastifyReply) {
+		const { referenceId } = request.params
+		const profileId = request.user.id
+
+		try {
+			const result = await ProjectsService.getDraft(referenceId, profileId)
+
+			if (result.error === "NOT_FOUND") {
+				return reply.code(404).send({
+					success: false,
+					error: { code: "NOT_FOUND", message: "Draft not found or unauthorized." },
+				})
+			}
+
+			return reply.code(200).send({ success: true, data: result.data })
+		} catch (error) {
+			request.log.error(error)
+			return reply.code(500).send({
+				success: false,
+				error: { code: "INTERNAL_ERROR", message: "Failed to fetch draft." },
+			})
+		}
+	}
+
 	static async getSingleProject(request: FastifyRequest<{ Params: { referenceId: string } }>, reply: FastifyReply) {
 		const { referenceId } = request.params
 

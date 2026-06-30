@@ -14,6 +14,7 @@ vi.mock("../src/services/projects.service.js", () => {
 			getProjectFeed: vi.fn(),
 			getProjectPreviews: vi.fn(),
 			getSingleProject: vi.fn(),
+			getDraft: vi.fn(),
 			getRules: vi.fn(),
 			getReservationCounts: vi.fn(),
 		},
@@ -106,6 +107,28 @@ describe("Project Routes", () => {
 
 		expect(response.statusCode).toBe(200)
 		expect(response.json().data.name).toBe("Found Project")
+	})
+
+	it("should get draft by referenceId", async () => {
+		vi.mocked(ProjectsService.getDraft).mockResolvedValue({
+			success: true,
+			data: {
+				referenceId: "ref123456789",
+				name: "Draft Project",
+				status: "draft",
+				showcaseDate: "2099-12-31",
+				reservedAt: new Date().toISOString(),
+			},
+		} as any)
+
+		const response = await fastify.inject({
+			method: "GET",
+			url: "/projects/drafts/ref123456789",
+		})
+
+		expect(response.statusCode).toBe(200)
+		expect(response.json().data.name).toBe("Draft Project")
+		expect(response.json().data.status).toBe("draft")
 	})
 
 	it("should parse query string properly when fetching previews", async () => {

@@ -114,6 +114,17 @@ export const getProjectPreviewResponseSchema = z.object({
 	data: z.array(projectPreviewSchema),
 })
 
+export const getDraftResponseSchema = z.object({
+	success: z.boolean(),
+	data: z.object({
+		referenceId: z.string(),
+		name: z.string(),
+		status: z.string(),
+		showcaseDate: z.string(),
+		reservedAt: z.string(),
+	}),
+})
+
 export const getReservationCountsQuerySchema = z.object({
 	year: z.coerce.number().int().min(2026).optional(),
 	month: z.coerce.number().int().min(1).max(12).optional(),

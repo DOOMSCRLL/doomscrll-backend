@@ -258,6 +258,26 @@ export class ProjectsService {
 		return previews
 	}
 
+	static async getDraft(referenceId: string, profileId: string) {
+		const [draft] = await db
+			.select({
+				referenceId: projects.referenceId,
+				name: projects.name,
+				status: projects.status,
+				showcaseDate: projects.showcaseDate,
+				reservedAt: projects.reservedAt,
+			})
+			.from(projects)
+			.innerJoin(projectLedger, eq(projects.ledgerId, projectLedger.id))
+			.where(and(eq(projects.referenceId, referenceId), eq(projectLedger.profileId, profileId)))
+
+		if (!draft) {
+			return { error: "NOT_FOUND" }
+		}
+
+		return { success: true, data: draft }
+	}
+
 	static async getSingleProject(referenceId: string) {
 		const todayUtc = new Date().toISOString().split("T")[0]
 

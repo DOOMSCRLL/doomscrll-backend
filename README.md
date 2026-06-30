@@ -113,6 +113,7 @@ Background jobs that automatically maintain database health and enforce the plat
 
 #### Protected end-points (Creator):
 
+- `GET /projects/drafts/:referenceId`: Fetches a creator's own active draft (including `status` and `reservedAt` timestamps). Used heavily during the payment flow to verify checkout states.
 - `POST /projects/reserve`: The transaction bouncer. Verifies UTC deadzones, enforces the 256 daily slot limit, and checks the `project_ledger` for the 14-day anti-abuse cooldown. Creates a `draft` and returns the `referenceId`.
 - `POST /projects/:referenceId/upload-urls`: The CDN broker. Generates and returns time-limited, pre-signed Cloudflare R2 URLs for direct client-to-CDN `.webp` image uploads.
 - `PATCH /projects/:referenceId`: Auto-save route. Accepts partial content payloads to update the database row. Does not alter the `incomplete` status.
