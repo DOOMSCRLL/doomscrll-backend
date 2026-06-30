@@ -194,6 +194,30 @@ export class ProjectsController {
 		}
 	}
 
+	static async deleteDraft(request: FastifyRequest<{ Params: { referenceId: string } }>, reply: FastifyReply) {
+		const { referenceId } = request.params
+		const profileId = request.user.id
+
+		try {
+			const result = await ProjectsService.deleteDraft(referenceId, profileId)
+
+			if (result.error === "NOT_FOUND_OR_NOT_DRAFT") {
+				return reply.code(404).send({
+					success: false,
+					error: { code: "NOT_FOUND", message: "Draft not found, unauthorized, or already processed." },
+				})
+			}
+
+			return reply.code(200).send({ success: true, message: "Draft deleted." })
+		} catch (error) {
+			request.log.error(error)
+			return reply.code(500).send({
+				success: false,
+				error: { code: "INTERNAL_ERROR", message: "Failed to delete draft." },
+			})
+		}
+	}
+
 	static async getSingleProject(request: FastifyRequest<{ Params: { referenceId: string } }>, reply: FastifyReply) {
 		const { referenceId } = request.params
 

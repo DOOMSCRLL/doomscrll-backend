@@ -104,6 +104,21 @@ export const projectRoutes: FastifyPluginAsyncZod = async (fastify) => {
 			ProjectsController.getDraft,
 		)
 
+		privateRoutes.delete(
+			"/drafts/:referenceId",
+			{
+				schema: {
+					params: getSingleProjectParamsSchema,
+					response: {
+						200: z.object({ success: z.boolean(), message: z.string() }),
+						404: apiErrorResponseSchema,
+						500: apiErrorResponseSchema,
+					},
+				},
+			},
+			ProjectsController.deleteDraft,
+		)
+
 		privateRoutes.post("/reserve", { schema: { body: reserveProjectSchema } }, ProjectsController.reserve)
 
 		privateRoutes.post(
