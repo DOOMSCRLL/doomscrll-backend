@@ -73,3 +73,6 @@ dist
 
 # Drizzle
 /drizzle
+
+# Agentic Cache
+.agents/
