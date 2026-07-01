@@ -3,6 +3,7 @@ import { FastifyReply, FastifyRequest } from "fastify"
 import fp from "fastify-plugin"
 
 import { profiles, sessions } from "../db/schema.js"
+import { getErrorResponse } from "../config/errors.js"
 
 declare module "fastify" {
 	interface FastifyInstance {
@@ -18,7 +19,8 @@ export default fp(async (fastify) => {
 	fastify.decorate("authenticate", async (request: FastifyRequest, reply: FastifyReply) => {
 		try {
 			const sessionId = request.cookies.session_id
-			if (!sessionId) return reply.code(401).send({ error: "Unauthorized: No session cookie found." })
+			if (!sessionId)
+				return reply.code(401).send(getErrorResponse("UNAUTHORIZED", undefined, "No session cookie found."))
 
 			const [result] = await fastify.db
 				.select({
@@ -32,13 +34,15 @@ export default fp(async (fastify) => {
 
 			if (!result || result.session.expiresAt < new Date()) {
 				reply.clearCookie("session_id", { path: "/" })
-				return reply.code(401).send({ error: "Unauthorized: Session expired or invalid." })
+				return reply.code(401).send(getErrorResponse("SESSION_EXPIRED"))
 			}
 
 			request.user = result.profile
 		} catch (err) {
 			request.log.error(err)
-			return reply.code(500).send({ error: "Internal server error during authentication." })
+			return reply
+				.code(500)
+				.send(getErrorResponse("INTERNAL_ERROR", undefined, "Internal server error during authentication."))
 		}
 	})
 })

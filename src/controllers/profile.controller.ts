@@ -1,16 +1,17 @@
 import { FastifyReply, FastifyRequest } from "fastify"
 import { ProfileService } from "../services/profile.service.js"
+import { getErrorResponse } from "../config/errors.js"
 
 export class ProfileController {
 	static async getMe(request: FastifyRequest, reply: FastifyReply) {
 		const userId = request.user.id
 		try {
 			const profile = await ProfileService.getProfileById(userId)
-			if (!profile) return reply.code(404).send({ error: "Profile not found." })
+			if (!profile) return reply.code(404).send(getErrorResponse("NOT_FOUND", undefined, "Profile not found."))
 			return reply.send({ success: true, profile })
 		} catch (error) {
 			request.log.error(error)
-			return reply.code(500).send({ error: "Internal Server Error" })
+			return reply.code(500).send(getErrorResponse("INTERNAL_ERROR"))
 		}
 	}
 
@@ -18,11 +19,11 @@ export class ProfileController {
 		const { username } = request.params
 		try {
 			const profile = await ProfileService.getPublicProfileByUsername(username)
-			if (!profile) return reply.code(404).send({ error: "Creator not found." })
+			if (!profile) return reply.code(404).send(getErrorResponse("NOT_FOUND", undefined, "Creator not found."))
 			return reply.send({ success: true, profile })
 		} catch (error) {
 			request.log.error(error)
-			return reply.code(500).send({ error: "Internal Server Error" })
+			return reply.code(500).send(getErrorResponse("INTERNAL_ERROR"))
 		}
 	}
 
@@ -39,13 +40,13 @@ export class ProfileController {
 				return reply.send({ success: true, message: "No changes provided" })
 			}
 			if (result.error === "USERNAME_TAKEN") {
-				return reply.code(409).send({ error: "That username is already taken." })
+				return reply.code(409).send(getErrorResponse("USERNAME_TAKEN"))
 			}
 
 			return reply.send({ success: true, profile: result.profile })
 		} catch (error) {
 			request.log.error(error)
-			return reply.code(500).send({ error: "Internal Server Error" })
+			return reply.code(500).send(getErrorResponse("INTERNAL_ERROR"))
 		}
 	}
 
@@ -54,7 +55,7 @@ export class ProfileController {
 		try {
 			const result = await ProfileService.deleteProfile(userId)
 			if (result.error === "NOT_FOUND") {
-				return reply.code(404).send({ error: "Profile not found." })
+				return reply.code(404).send(getErrorResponse("NOT_FOUND", undefined, "Profile not found."))
 			}
 
 			return reply
@@ -62,7 +63,7 @@ export class ProfileController {
 				.send({ success: true, message: "Account and all data deleted." })
 		} catch (error) {
 			request.log.error(error)
-			return reply.code(500).send({ error: "Internal Server Error" })
+			return reply.code(500).send(getErrorResponse("INTERNAL_ERROR"))
 		}
 	}
 }

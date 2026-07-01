@@ -26,12 +26,24 @@ const app: FastifyPluginAsync<AppOptions> = async (fastify, opts): Promise<void>
 	})
 
 	fastify.setErrorHandler((error: FastifyError, request, reply) => {
+		let flattenedDetails: Record<string, any> | undefined = undefined
+
+		if (error.validation && Array.isArray(error.validation)) {
+			flattenedDetails = {}
+			error.validation.forEach((issue: any) => {
+				const path = issue.instancePath || (issue.path ? issue.path.join(".") : "unknown")
+				flattenedDetails![path] = issue.message
+			})
+		} else if (error.validation) {
+			flattenedDetails = { error: error.validation }
+		}
+
 		reply.status(error.statusCode || 500).send({
 			success: false,
 			error: {
 				code: error.code || "INTERNAL_SERVER_ERROR",
 				message: error.message || "Internal Server Error",
-				details: error.validation || undefined,
+				details: flattenedDetails,
 			},
 		})
 	})

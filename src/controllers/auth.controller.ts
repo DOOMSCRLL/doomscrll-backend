@@ -1,5 +1,6 @@
 import { FastifyRequest, FastifyReply } from "fastify"
 import { AuthService } from "../services/auth.service.js"
+import { getErrorResponse } from "../config/errors.js"
 
 export class AuthController {
 	static async requestOtp(request: FastifyRequest<{ Body: { email: string } }>, reply: FastifyReply) {
@@ -12,7 +13,7 @@ export class AuthController {
 			})
 		} catch (error) {
 			request.log.error(error)
-			return reply.code(500).send({ success: false, error: "Internal Server Error" })
+			return reply.code(500).send(getErrorResponse("INTERNAL_ERROR"))
 		}
 	}
 
@@ -21,7 +22,7 @@ export class AuthController {
 		try {
 			const sessionId = await AuthService.verifyOtp(email, code)
 			if (!sessionId) {
-				return reply.code(401).send({ error: "Invalid or expired code." })
+				return reply.code(401).send(getErrorResponse("INVALID_OTP"))
 			}
 
 			const sessionExpiry = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
@@ -37,7 +38,7 @@ export class AuthController {
 			return reply.send({ success: true, message: "Welcome to DOOMSCRLL.", csrfToken })
 		} catch (error) {
 			request.log.error(error)
-			return reply.code(500).send({ success: false, error: "Internal Server Error" })
+			return reply.code(500).send(getErrorResponse("INTERNAL_ERROR"))
 		}
 	}
 
@@ -56,7 +57,7 @@ export class AuthController {
 			return reply.send({ success: true, message: "Logged out successfully." })
 		} catch (error) {
 			request.log.error(error)
-			return reply.code(500).send({ success: false, error: "Internal Server Error" })
+			return reply.code(500).send(getErrorResponse("INTERNAL_ERROR"))
 		}
 	}
 

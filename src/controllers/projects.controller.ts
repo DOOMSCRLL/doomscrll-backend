@@ -1,6 +1,7 @@
 import { FastifyReply, FastifyRequest } from "fastify"
 import { ProjectsService } from "../services/projects.service.js"
 import { GetProjectPreviewQuery, GetReservationCountsQuery } from "../routes/projects/schemas.js"
+import { getErrorResponse } from "../config/errors.js"
 
 export class ProjectsController {
 	static async reserve(request: FastifyRequest<{ Body: any }>, reply: FastifyReply) {
@@ -12,29 +13,15 @@ export class ProjectsController {
 
 			if ("error" in result) {
 				if (result.error === "INVALID_PAYLOAD") {
-					return reply.code(400).send({
-						success: false,
-						error: { code: result.error, message: (result as any).message },
-					})
+					return reply.code(400).send(getErrorResponse("INVALID_PAYLOAD", undefined, (result as any).message))
 				} else if (result.error === "DEADZONE_ACTIVE") {
-					return reply.code(403).send({
-						success: false,
-						error: { code: result.error, message: (result as any).message },
-					})
+					return reply.code(403).send(getErrorResponse("DEADZONE_ACTIVE", undefined, (result as any).message))
 				} else if (result.error === "SLOT_UNAVAILABLE") {
-					return reply.code(409).send({
-						success: false,
-						error: { code: "SLOT_UNAVAILABLE", message: "All DOOMLITs have been reserved for this date." },
-					})
+					return reply.code(409).send(getErrorResponse("SLOT_UNAVAILABLE"))
 				} else if (result.error === "COOLDOWN_ACTIVE") {
-					return reply.code(429).send({
-						success: false,
-						error: {
-							code: "COOLDOWN_ACTIVE",
-							message: "A project can not be re-showcased before 14 days since it's showcase date.",
-							details: result.details,
-						},
-					})
+					return reply.code(429).send(getErrorResponse("COOLDOWN_ACTIVE", result.details))
+				} else if (result.error === "DRAFT_LIMIT_REACHED") {
+					return reply.code(409).send(getErrorResponse("DRAFT_LIMIT_REACHED"))
 				}
 			}
 
@@ -52,7 +39,7 @@ export class ProjectsController {
 			request.log.error(error)
 			return reply
 				.code(500)
-				.send({ success: false, error: { code: "INTERNAL_ERROR", message: "Failed to secure DOOMLIT reservation." } })
+				.send(getErrorResponse("INTERNAL_ERROR", undefined, "Failed to secure DOOMLIT reservation."))
 		}
 	}
 
@@ -68,15 +55,15 @@ export class ProjectsController {
 			const result = await ProjectsService.getUploadUrls(referenceId, screenshotCount, profileId)
 
 			if (result.error === "UNAUTHORIZED") {
-				return reply.code(403).send({ success: false, error: "Unauthorized access" })
+				return reply.code(403).send(getErrorResponse("UNAUTHORIZED"))
 			} else if (result.error === "INVALID_STATE") {
-				return reply.code(400).send({ success: false, error: "Project is not awaiting content." })
+				return reply.code(400).send(getErrorResponse("INVALID_STATE", undefined, "Project is not awaiting content."))
 			}
 
 			return reply.send({ success: true, data: result.data })
 		} catch (error) {
 			request.log.error(error)
-			return reply.code(500).send({ success: false, error: "Failed to generate upload URLs." })
+			return reply.code(500).send(getErrorResponse("INTERNAL_ERROR", undefined, "Failed to generate upload URLs."))
 		}
 	}
 
@@ -92,15 +79,15 @@ export class ProjectsController {
 			const result = await ProjectsService.updateProject(referenceId, payload, profileId)
 
 			if (result.error === "UNAUTHORIZED") {
-				return reply.code(403).send({ success: false, error: "Unauthorized access" })
+				return reply.code(403).send(getErrorResponse("UNAUTHORIZED"))
 			} else if (result.error === "INVALID_STATE") {
-				return reply.code(400).send({ success: false, error: "Project is not awaiting content." })
+				return reply.code(400).send(getErrorResponse("INVALID_STATE", undefined, "Project is not awaiting content."))
 			}
 
 			return reply.code(200).send({ success: true, message: "Project details are updated." })
 		} catch (error) {
 			request.log.error(error)
-			return reply.code(500).send({ success: false, error: "Failed to save project content." })
+			return reply.code(500).send(getErrorResponse("INTERNAL_ERROR", undefined, "Failed to save project content."))
 		}
 	}
 
@@ -113,15 +100,11 @@ export class ProjectsController {
 
 			switch (result.error) {
 				case "UNAUTHORIZED":
-					return reply.code(403).send({ success: false, error: "Unauthorized access" })
+					return reply.code(403).send(getErrorResponse("UNAUTHORIZED"))
 				case "INVALID_STATE":
-					return reply.code(400).send({ success: false, error: "Project is not awaiting content." })
+					return reply.code(400).send(getErrorResponse("INVALID_STATE", undefined, "Project is not awaiting content."))
 				case "VALIDATION_FAILED":
-					return reply.code(400).send({
-						success: false,
-						message: "Missing or invalid required fields.",
-						errors: result.issues,
-					})
+					return reply.code(400).send(getErrorResponse("VALIDATION_FAILED", result.issues))
 				default:
 					return reply.code(200).send({
 						success: true,
@@ -130,7 +113,7 @@ export class ProjectsController {
 			}
 		} catch (error) {
 			request.log.error(error)
-			return reply.code(500).send({ success: false, error: "Failed to publish project." })
+			return reply.code(500).send(getErrorResponse("INTERNAL_ERROR", undefined, "Failed to publish project."))
 		}
 	}
 
@@ -140,7 +123,7 @@ export class ProjectsController {
 			return reply.code(200).send({ success: true, data: feed })
 		} catch (error) {
 			request.log.error(error)
-			return reply.code(500).send({ success: false, error: "Failed to fetch daily DOOMLIT feed." })
+			return reply.code(500).send(getErrorResponse("INTERNAL_ERROR", undefined, "Failed to fetch daily DOOMLIT feed."))
 		}
 	}
 
@@ -152,10 +135,7 @@ export class ProjectsController {
 
 		const todayUtc = new Date().toISOString().split("T")[0]
 		if (date <= todayUtc) {
-			return reply.code(400).send({
-				success: false,
-				error: { code: "INVALID_DATE", message: "Queried date must be in the future." },
-			})
+			return reply.code(400).send(getErrorResponse("INVALID_DATE"))
 		}
 
 		try {
@@ -163,10 +143,7 @@ export class ProjectsController {
 			return reply.code(200).send({ success: true, data: previews })
 		} catch (error) {
 			request.log.error(error)
-			return reply.code(500).send({
-				success: false,
-				error: { code: "INTERNAL_ERROR", message: "Failed to fetch project previews." },
-			})
+			return reply.code(500).send(getErrorResponse("INTERNAL_ERROR", undefined, "Failed to fetch project previews."))
 		}
 	}
 
@@ -178,43 +155,31 @@ export class ProjectsController {
 			const result = await ProjectsService.getDraft(referenceId, profileId)
 
 			if (result.error === "NOT_FOUND") {
-				return reply.code(404).send({
-					success: false,
-					error: { code: "NOT_FOUND", message: "Draft not found or unauthorized." },
-				})
+				return reply.code(404).send(getErrorResponse("NOT_FOUND", undefined, "Draft not found or unauthorized."))
 			}
 
 			return reply.code(200).send({ success: true, data: result.data })
 		} catch (error) {
 			request.log.error(error)
-			return reply.code(500).send({
-				success: false,
-				error: { code: "INTERNAL_ERROR", message: "Failed to fetch draft." },
-			})
+			return reply.code(500).send(getErrorResponse("INTERNAL_ERROR", undefined, "Failed to fetch draft."))
 		}
 	}
 
-	static async deleteDraft(request: FastifyRequest<{ Params: { referenceId: string } }>, reply: FastifyReply) {
+	static async cancelProject(request: FastifyRequest<{ Params: { referenceId: string } }>, reply: FastifyReply) {
 		const { referenceId } = request.params
 		const profileId = request.user.id
 
 		try {
-			const result = await ProjectsService.deleteDraft(referenceId, profileId)
+			const result = await ProjectsService.cancelProject(referenceId, profileId)
 
-			if (result.error === "NOT_FOUND_OR_NOT_DRAFT") {
-				return reply.code(404).send({
-					success: false,
-					error: { code: "NOT_FOUND", message: "Draft not found, unauthorized, or already processed." },
-				})
+			if (result.error) {
+				return reply.code(400).send(getErrorResponse(result.error))
 			}
 
-			return reply.code(200).send({ success: true, message: "Draft deleted." })
+			return reply.code(200).send({ success: true, message: "Project canceled." })
 		} catch (error) {
 			request.log.error(error)
-			return reply.code(500).send({
-				success: false,
-				error: { code: "INTERNAL_ERROR", message: "Failed to delete draft." },
-			})
+			return reply.code(500).send(getErrorResponse("INTERNAL_ERROR", undefined, "Failed to cancel project."))
 		}
 	}
 
@@ -227,13 +192,15 @@ export class ProjectsController {
 			if (!project) {
 				return reply
 					.code(404)
-					.send({ success: false, error: `DOOMLIT with given reference ID is not found, or has expired.` })
+					.send(
+						getErrorResponse("NOT_FOUND", undefined, "DOOMLIT with given reference ID is not found, or has expired."),
+					)
 			}
 
 			return reply.code(200).send({ success: true, data: project })
 		} catch (error) {
 			request.log.error(error)
-			return reply.code(500).send({ success: false, error: "Failed to fetch project details." })
+			return reply.code(500).send(getErrorResponse("INTERNAL_ERROR", undefined, "Failed to fetch project details."))
 		}
 	}
 
@@ -243,10 +210,7 @@ export class ProjectsController {
 			return reply.code(200).send({ success: true, data: rules })
 		} catch (error) {
 			request.log.error(error)
-			return reply.code(500).send({
-				success: false,
-				error: { code: "INTERNAL_ERROR", message: "Failed to fetch project rules." },
-			})
+			return reply.code(500).send(getErrorResponse("INTERNAL_ERROR", undefined, "Failed to fetch project rules."))
 		}
 	}
 
@@ -261,10 +225,9 @@ export class ProjectsController {
 			return reply.code(200).send({ success: true, data: result })
 		} catch (error) {
 			request.log.error(error)
-			return reply.code(500).send({
-				success: false,
-				error: { code: "INTERNAL_ERROR", message: "Failed to fetch monthly reservation counts." },
-			})
+			return reply
+				.code(500)
+				.send(getErrorResponse("INTERNAL_ERROR", undefined, "Failed to fetch monthly reservation counts."))
 		}
 	}
 }

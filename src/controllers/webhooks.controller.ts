@@ -1,5 +1,6 @@
 import { FastifyReply, FastifyRequest } from "fastify"
 import { WebhooksService } from "../services/webhooks.service.js"
+import { getErrorResponse } from "../config/errors.js"
 
 export class WebhooksController {
 	static async handleLemonSqueezy(request: FastifyRequest, reply: FastifyReply) {
@@ -7,7 +8,7 @@ export class WebhooksController {
 		const signature = request.headers["x-signature"] as string
 
 		if (!secret || !signature || !request.rawBody) {
-			return reply.code(400).send("Missing signature or raw body.")
+			return reply.code(400).send(getErrorResponse("INVALID_PAYLOAD", undefined, "Missing signature or raw body."))
 		}
 
 		try {
@@ -16,12 +17,12 @@ export class WebhooksController {
 			if ("error" in result) {
 				if (result.error === "INVALID_SIGNATURE") {
 					request.log.warn("Invalid Lemon Squeezy signature detected.")
-					return reply.code(401).send("Invalid signature")
+					return reply.code(401).send(getErrorResponse("INVALID_SIGNATURE"))
 				} else if (result.error === "MALFORMED_JSON") {
-					return reply.code(400).send("Malformed JSON body: " + result.message)
+					return reply.code(400).send(getErrorResponse("MALFORMED_JSON", undefined, result.message))
 				} else if (result.error === "MISSING_REFERENCE_ID") {
 					request.log.error("An order has been created without DOOMLIT reference ID.")
-					return reply.code(400).send("Missing custom_data.project_reference_id")
+					return reply.code(400).send(getErrorResponse("MISSING_REFERENCE_ID"))
 				}
 			}
 
@@ -31,7 +32,7 @@ export class WebhooksController {
 			return reply.code(200).send("OK")
 		} catch (error) {
 			request.log.error(error)
-			return reply.code(500).send("Webhook processing failed.")
+			return reply.code(500).send(getErrorResponse("INTERNAL_ERROR", undefined, "Webhook processing failed."))
 		}
 	}
 }
