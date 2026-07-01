@@ -1,6 +1,6 @@
 import { PutObjectCommand } from "@aws-sdk/client-s3"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
-import { and, arrayContains, count, eq, gte, inArray, lte, or, sql, SQL, ne } from "drizzle-orm"
+import { and, arrayContains, count, eq, gte, inArray, lte, ne, or, sql, SQL } from "drizzle-orm"
 import { nanoid } from "nanoid"
 
 import { DB_RULES } from "../config/index.js"
@@ -48,6 +48,16 @@ export class ProjectsService {
 
 				if (slotCount.value >= DB_RULES.limitDailySlots) {
 					throw new ServiceError("SLOT_UNAVAILABLE")
+				}
+
+				const [existingDrafts] = await tx
+					.select({ value: count() })
+					.from(projects)
+					.innerJoin(projectLedger, eq(projects.ledgerId, projectLedger.id))
+					.where(and(eq(projectLedger.profileId, profileId), eq(projects.status, "draft")))
+
+				if (Number(existingDrafts.value) > 0) {
+					throw new ServiceError("DRAFT_LIMIT_REACHED")
 				}
 
 				let ledgerEntry = await tx.query.projectLedger.findFirst({
@@ -110,7 +120,7 @@ export class ProjectsService {
 		if (!projectData || projectData.ownerId !== profileId) {
 			return { error: "UNAUTHORIZED" as const }
 		}
-		if (projectData.status !== "incomplete") {
+		if (projectData.status !== "incomplete" && projectData.status !== "ready") {
 			return { error: "INVALID_STATE" as const }
 		}
 
@@ -156,7 +166,7 @@ export class ProjectsService {
 
 		if (!projectData || projectData.ownerId !== profileId) {
 			return { error: "UNAUTHORIZED" as const }
-		} else if (projectData.status === "incomplete") {
+		} else if (projectData.status !== "incomplete" && projectData.status !== "ready") {
 			return { error: "INVALID_STATE" as const }
 		}
 
@@ -175,7 +185,7 @@ export class ProjectsService {
 			if (!projectData || projectData.project_ledger.profileId !== profileId) {
 				tx.rollback()
 				return { error: "UNAUTHORIZED" as const }
-			} else if (projectData.projects.status !== "incomplete") {
+			} else if (projectData.projects.status !== "incomplete" && projectData.projects.status !== "ready") {
 				tx.rollback()
 				return { error: "INVALID_STATE" as const }
 			}
@@ -197,6 +207,10 @@ export class ProjectsService {
 			}
 
 			await tx.update(projects).set({ status: "ready" }).where(eq(projects.id, p.id))
+			await tx
+				.update(projectLedger)
+				.set({ lastShowcaseDate: p.showcaseDate })
+				.where(eq(projectLedger.id, projectData.project_ledger.id))
 			return { success: true as const }
 		})
 	}
@@ -266,6 +280,7 @@ export class ProjectsService {
 				status: projects.status,
 				showcaseDate: projects.showcaseDate,
 				reservedAt: projects.reservedAt,
+				createdAt: projects.createdAt,
 				authorHandle: profiles.username,
 			})
 			.from(projects)
@@ -280,30 +295,24 @@ export class ProjectsService {
 		return { success: true, data: draft }
 	}
 
-	static async deleteDraft(referenceId: string, profileId: string) {
-		// First verify it belongs to the user and is a draft
-		const [draft] = await db
-			.select({ id: projects.id, ledgerId: projects.ledgerId })
+	static async cancelProject(referenceId: string, profileId: string) {
+		const [projectData] = await db
+			.select({ id: projects.id, ledgerId: projects.ledgerId, status: projects.status })
 			.from(projects)
 			.innerJoin(projectLedger, eq(projects.ledgerId, projectLedger.id))
-			.where(
-				and(
-					eq(projects.referenceId, referenceId),
-					eq(projectLedger.profileId, profileId),
-					eq(projects.status, "draft"),
-				),
-			)
+			.where(and(eq(projects.referenceId, referenceId), eq(projectLedger.profileId, profileId)))
 
-		if (!draft) {
-			return { error: "NOT_FOUND_OR_NOT_DRAFT" }
+		if (!projectData) return { error: "NOT_FOUND" as const }
+
+		if (projectData.status === "draft") {
+			await db.delete(projectLedger).where(eq(projectLedger.id, projectData.ledgerId))
+		} else if (projectData.status === "incomplete" || projectData.status === "ready") {
+			await db.update(projects).set({ status: "canceled" }).where(eq(projects.id, projectData.id))
+		} else {
+			return { error: "INVALID_STATE" as const }
 		}
 
-		// Delete the project (and maybe ledger, depending on ON DELETE cascade or business logic)
-		// Since projects has a foreign key to projectLedger, we delete the project.
-		// If ledger is 1:1, we should probably delete the ledger.
-		await db.delete(projectLedger).where(eq(projectLedger.id, draft.ledgerId))
-
-		return { success: true }
+		return { success: true as const }
 	}
 
 	static async getSingleProject(referenceId: string) {
