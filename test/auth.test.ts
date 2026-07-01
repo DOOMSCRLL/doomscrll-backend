@@ -27,6 +27,9 @@ describe("Auth Routes", () => {
 		await fastify.register(cookie)
 		fastify.decorate("authenticate", async () => {})
 		fastify.decorate("csrfProtection", async () => {})
+		fastify.decorateReply("generateCsrf", function () {
+			return "csrf-token-123"
+		})
 		await fastify.register(authRoutes, { prefix: "/auth" })
 		await fastify.ready()
 	})
@@ -66,5 +69,66 @@ describe("Auth Routes", () => {
 		// Assert
 		expect(response.statusCode).toBe(400)
 		expect(AuthService.requestOtp).not.toHaveBeenCalled()
+	})
+
+	it("should verify OTP successfully and set cookie", async () => {
+		vi.mocked(AuthService.verifyOtp).mockResolvedValue({
+			success: true,
+			profile: { id: "test", username: "test" },
+			sessionId: "session123",
+		} as any)
+
+		const response = await fastify.inject({
+			method: "POST",
+			url: "/auth/verify",
+			payload: {
+				email: "test@example.com",
+				code: "123456",
+			},
+		})
+
+		expect(response.statusCode).toBe(200)
+		expect(response.json().success).toBe(true)
+		expect(response.json().csrfToken).toBe("csrf-token-123")
+		expect(response.headers["set-cookie"]).toBeDefined()
+	})
+
+	it("should fail OTP verification with bad code", async () => {
+		const response = await fastify.inject({
+			method: "POST",
+			url: "/auth/verify",
+			payload: {
+				email: "test@example.com",
+				code: "123", // too short
+			},
+		})
+
+		expect(response.statusCode).toBe(400)
+	})
+
+	it("should return CSRF token on GET /csrf", async () => {
+		const response = await fastify.inject({
+			method: "GET",
+			url: "/auth/csrf",
+		})
+		
+		expect(response.statusCode).toBe(200)
+		expect(response.json().csrfToken).toBe("csrf-token-123")
+	})
+
+	it("should logout successfully", async () => {
+		vi.mocked(AuthService.logout).mockResolvedValue({ success: true } as any)
+		
+		const response = await fastify.inject({
+			method: "POST",
+			url: "/auth/logout",
+			cookies: {
+				session_id: "session123",
+			},
+		})
+		
+		expect(response.statusCode).toBe(200)
+		expect(response.json().success).toBe(true)
+		expect(response.headers["set-cookie"]).toBeDefined() // should clear cookie
 	})
 })
