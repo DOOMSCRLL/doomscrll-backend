@@ -17,7 +17,7 @@ describe("Webhook Routes", () => {
 	beforeEach(async () => {
 		vi.clearAllMocks()
 		fastify = Fastify()
-		process.env.LEMONSQUEEZY_WEBHOOK_API_KEY = "test-secret"
+		process.env.LEMONSQUEEZY_WEBHOOK_SECRET = "test-secret"
 		await fastify.register(webhookRoutes, { prefix: "/webhooks" })
 		await fastify.ready()
 	})
@@ -54,5 +54,36 @@ describe("Webhook Routes", () => {
 		})
 
 		expect(response.statusCode).toBe(401)
+	})
+
+	it("should return 400 on malformed json payload", async () => {
+		vi.mocked(WebhooksService.processLemonSqueezyWebhook).mockResolvedValue({
+			error: "MALFORMED_JSON",
+			message: "Bad JSON",
+		} as any)
+
+		const response = await fastify.inject({
+			method: "POST",
+			url: "/webhooks/lemonsqueezy",
+			headers: { "x-signature": "test-signature" },
+			payload: { meta: { event_name: "order_created" } },
+		})
+
+		expect(response.statusCode).toBe(400)
+		expect(response.json().error.code).toBe("MALFORMED_JSON")
+	})
+
+	it("should return 400 when missing reference ID", async () => {
+		vi.mocked(WebhooksService.processLemonSqueezyWebhook).mockResolvedValue({ error: "MISSING_REFERENCE_ID" } as any)
+
+		const response = await fastify.inject({
+			method: "POST",
+			url: "/webhooks/lemonsqueezy",
+			headers: { "x-signature": "test-signature" },
+			payload: { meta: { event_name: "order_created" } },
+		})
+
+		expect(response.statusCode).toBe(400)
+		expect(response.json().error.code).toBe("MISSING_REFERENCE_ID")
 	})
 })

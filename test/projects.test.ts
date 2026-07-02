@@ -134,6 +134,17 @@ describe("Project Routes", () => {
 		expect(response.json().data.status).toBe("draft")
 	})
 
+	it("should return 404 when draft is not found or not in draft status", async () => {
+		vi.mocked(ProjectsService.getDraft).mockResolvedValue({ error: "NOT_FOUND" } as any)
+
+		const response = await fastify.inject({
+			method: "GET",
+			url: "/projects/drafts/ref123456789",
+		})
+
+		expect(response.statusCode).toBe(404)
+	})
+
 	it("should parse query string properly when fetching previews", async () => {
 		const mockPreviews = [
 			{
@@ -164,7 +175,7 @@ describe("Project Routes", () => {
 
 	it("should get project feed", async () => {
 		vi.mocked(ProjectsService.getProjectFeed).mockResolvedValue([
-			{ referenceId: "ref1", name: "Project 1", creator: { username: "user1" } }
+			{ referenceId: "ref1", name: "Project 1", creator: { username: "user1" } },
 		] as any)
 
 		const res = await fastify.inject({ method: "GET", url: "/projects?page=1&batchSize=10" })
@@ -175,7 +186,7 @@ describe("Project Routes", () => {
 	it("should get reservation counts", async () => {
 		vi.mocked(ProjectsService.getReservationCounts).mockResolvedValue({
 			meta: { year: 2026, month: 7, maxReservationsPerDay: 256 },
-			counts: { "2026-07-01": 5 }
+			counts: { "2026-07-01": 5 },
 		} as any)
 
 		const res = await fastify.inject({ method: "GET", url: "/projects/reservation-counts?year=2026&month=7" })
@@ -200,13 +211,13 @@ describe("Project Routes", () => {
 	it("should get upload urls", async () => {
 		vi.mocked(ProjectsService.getUploadUrls).mockResolvedValue({
 			success: true,
-			data: { cover: { uploadUrl: "url", path: "path" }, screenshots: [] }
+			data: { cover: { uploadUrl: "url", path: "path" }, screenshots: [] },
 		} as any)
 
 		const res = await fastify.inject({
 			method: "POST",
 			url: "/projects/ref123456789/upload-urls",
-			payload: { screenshotCount: 1 }
+			payload: { screenshotCount: 1 },
 		})
 		expect(res.statusCode).toBe(200)
 	})
@@ -216,7 +227,7 @@ describe("Project Routes", () => {
 		const res = await fastify.inject({
 			method: "PATCH",
 			url: "/projects/ref123456789",
-			payload: { description: "new desc" }
+			payload: { description: "new desc" },
 		})
 		expect(res.statusCode).toBe(200)
 	})
