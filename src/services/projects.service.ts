@@ -302,6 +302,21 @@ export class ProjectsService {
 		return { success: true, data: draft }
 	}
 
+	static async getActiveDraftReference(profileId: string) {
+		const [draft] = await db
+			.select({ referenceId: projects.referenceId })
+			.from(projects)
+			.innerJoin(projectLedger, eq(projects.ledgerId, projectLedger.id))
+			.where(and(eq(projectLedger.profileId, profileId), eq(projects.status, "draft")))
+			.limit(1)
+
+		if (!draft) {
+			return { error: "NOT_FOUND" as const }
+		}
+
+		return { success: true as const, data: draft }
+	}
+
 	static async cancelProject(referenceId: string, profileId: string) {
 		const [projectData] = await db
 			.select({ id: projects.id, ledgerId: projects.ledgerId, status: projects.status })

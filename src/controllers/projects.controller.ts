@@ -165,6 +165,23 @@ export class ProjectsController {
 		}
 	}
 
+	static async getActiveDraftReference(request: FastifyRequest, reply: FastifyReply) {
+		const profileId = request.user.id
+
+		try {
+			const result = await ProjectsService.getActiveDraftReference(profileId)
+
+			if (result.error === "NOT_FOUND") {
+				return reply.code(404).send(getErrorResponse("NOT_FOUND", undefined, "Active draft not found."))
+			}
+
+			return reply.code(200).send({ success: true, data: result.data })
+		} catch (error) {
+			request.log.error(error)
+			return reply.code(500).send(getErrorResponse("INTERNAL_ERROR", undefined, "Failed to fetch active draft."))
+		}
+	}
+
 	static async cancelProject(request: FastifyRequest<{ Params: { referenceId: string } }>, reply: FastifyReply) {
 		const { referenceId } = request.params
 		const profileId = request.user.id

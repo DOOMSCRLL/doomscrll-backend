@@ -90,6 +90,20 @@ export const projectRoutes: FastifyPluginAsyncZod = async (fastify) => {
 		})
 
 		privateRoutes.get(
+			"/drafts/active",
+			{
+				schema: {
+					response: {
+						200: z.object({ success: z.boolean(), data: z.object({ referenceId: z.string() }) }),
+						404: apiErrorResponseSchema,
+						500: apiErrorResponseSchema,
+					},
+				},
+			},
+			ProjectsController.getActiveDraftReference,
+		)
+
+		privateRoutes.get(
 			"/drafts/:referenceId",
 			{
 				schema: {
