@@ -55,6 +55,11 @@ export class WebhooksService {
 
 			await tx.update(projects).set({ status: "incomplete" }).where(eq(projects.id, data.project.id))
 
+			await tx
+				.update(projectLedger)
+				.set({ lastShowcaseDate: data.project.showcaseDate })
+				.where(eq(projectLedger.id, data.ledger.id))
+
 			await tx.insert(receipts).values({
 				profileId: data.ledger.profileId,
 				ledgerId: data.ledger.id,
