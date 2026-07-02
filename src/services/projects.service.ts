@@ -286,7 +286,13 @@ export class ProjectsService {
 			.from(projects)
 			.innerJoin(projectLedger, eq(projects.ledgerId, projectLedger.id))
 			.innerJoin(profiles, eq(projectLedger.profileId, profiles.id))
-			.where(and(eq(projects.referenceId, referenceId), eq(projectLedger.profileId, profileId)))
+			.where(
+				and(
+					eq(projects.referenceId, referenceId),
+					eq(projectLedger.profileId, profileId),
+					eq(projects.status, "draft"),
+				),
+			)
 
 		if (!draft) {
 			return { error: "NOT_FOUND" }
