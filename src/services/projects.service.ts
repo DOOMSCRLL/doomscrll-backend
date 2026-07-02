@@ -282,6 +282,7 @@ export class ProjectsService {
 				reservedAt: projects.reservedAt,
 				createdAt: projects.createdAt,
 				authorHandle: profiles.username,
+				category: projects.category,
 			})
 			.from(projects)
 			.innerJoin(projectLedger, eq(projects.ledgerId, projectLedger.id))

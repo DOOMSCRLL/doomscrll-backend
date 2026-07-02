@@ -121,6 +121,7 @@ describe("Project Routes", () => {
 				reservedAt: new Date().toISOString(),
 				createdAt: new Date().toISOString(),
 				authorHandle: "testuser",
+				category: "software",
 			},
 		} as any)
 

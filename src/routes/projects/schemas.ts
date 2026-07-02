@@ -124,6 +124,7 @@ export const getDraftResponseSchema = z.object({
 		reservedAt: z.coerce.string(),
 		createdAt: z.coerce.string(),
 		authorHandle: z.string(),
+		category: z.string(),
 	}),
 })
 
