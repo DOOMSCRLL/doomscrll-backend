@@ -32,7 +32,9 @@ const app: FastifyPluginAsync<AppOptions> = async (fastify, opts): Promise<void>
 			flattenedDetails = {}
 			error.validation.forEach((issue: any) => {
 				const path = issue.instancePath || (issue.path ? issue.path.join(".") : "unknown")
-				flattenedDetails![path] = issue.message
+				if (flattenedDetails) {
+					flattenedDetails[path] = issue.message
+				}
 			})
 		} else if (error.validation) {
 			flattenedDetails = { error: error.validation }
