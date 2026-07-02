@@ -5,7 +5,7 @@ import fp from "fastify-plugin"
 import { AsyncTask, CronJob, SimpleIntervalJob } from "toad-scheduler"
 
 import { db } from "../db/index.js"
-import { otpCodes, projects, sessions } from "../db/schema.js"
+import { otpCodes, projectLedger, projects, sessions } from "../db/schema.js"
 import { BUCKET_NAME, r2Client } from "../lib/r2.js"
 
 export default fp(async (fastify) => {
@@ -48,13 +48,15 @@ export default fp(async (fastify) => {
 		"clean-expired-drafts",
 		async () => {
 			try {
-				const deletedDrafts = await db
-					.delete(projects)
+				const expiredDrafts = await db
+					.select({ ledgerId: projects.ledgerId })
+					.from(projects)
 					.where(and(eq(projects.status, "draft"), sql`${projects.reservedAt} < NOW() - INTERVAL '15 minutes'`))
-					.returning({ id: projects.referenceId })
 
-				if (deletedDrafts.length > 0) {
-					fastify.log.info(`Cleanup complete: Removed ${deletedDrafts.length} expired drafts.`)
+				if (expiredDrafts.length > 0) {
+					const ledgerIds = expiredDrafts.map((d) => d.ledgerId)
+					await db.delete(projectLedger).where(inArray(projectLedger.id, ledgerIds))
+					fastify.log.info(`Cleanup complete: Removed ${expiredDrafts.length} expired drafts.`)
 				}
 			} catch (error) {
 				fastify.log.error({ error }, "Expired draft cleanup failed.")

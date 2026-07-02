@@ -64,14 +64,20 @@ export class ProjectsService {
 					where: eq(projectLedger.primaryUrl, payload.primaryUrl),
 				})
 
-				if (ledgerEntry && ledgerEntry.lastShowcaseDate) {
-					const lastDate = new Date(ledgerEntry.lastShowcaseDate)
-					const targetDate = new Date(payload.showcaseDate)
-					const daysDiff = (targetDate.getTime() - lastDate.getTime()) / (1000 * 3600 * 24)
+				if (ledgerEntry) {
+					if (ledgerEntry.lastShowcaseDate) {
+						const lastDate = new Date(ledgerEntry.lastShowcaseDate)
+						const targetDate = new Date(payload.showcaseDate)
+						const daysDiff = (targetDate.getTime() - lastDate.getTime()) / (1000 * 3600 * 24)
 
-					if (daysDiff < DB_RULES.durationProjectCooldown) {
-						throw new ServiceError("COOLDOWN_ACTIVE", {
-							availableAfter: new Date(lastDate.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+						if (daysDiff < DB_RULES.durationProjectCooldown) {
+							throw new ServiceError("COOLDOWN_ACTIVE", {
+								availableAfter: new Date(lastDate.getTime() + 14 * 24 * 60 * 60 * 1000).toISOString().split("T")[0],
+							})
+						}
+					} else {
+						throw new ServiceError("INVALID_PAYLOAD", {
+							message: "This URL is currently being reserved by another user.",
 						})
 					}
 				} else {
