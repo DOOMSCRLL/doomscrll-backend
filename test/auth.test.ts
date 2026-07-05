@@ -111,14 +111,14 @@ describe("Auth Routes", () => {
 			method: "GET",
 			url: "/auth/csrf",
 		})
-		
+
 		expect(response.statusCode).toBe(200)
 		expect(response.json().csrfToken).toBe("csrf-token-123")
 	})
 
 	it("should logout successfully", async () => {
 		vi.mocked(AuthService.logout).mockResolvedValue({ success: true } as any)
-		
+
 		const response = await fastify.inject({
 			method: "POST",
 			url: "/auth/logout",
@@ -126,7 +126,7 @@ describe("Auth Routes", () => {
 				session_id: "session123",
 			},
 		})
-		
+
 		expect(response.statusCode).toBe(200)
 		expect(response.json().success).toBe(true)
 		expect(response.headers["set-cookie"]).toBeDefined() // should clear cookie

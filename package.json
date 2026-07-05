@@ -22,7 +22,8 @@
 		"db:seed": "node --loader ts-node/esm src/scripts/seed.ts",
 		"db:seed:projects": "node --loader ts-node/esm src/scripts/seed-projects.ts",
 		"db:clear:projects": "node --loader ts-node/esm src/scripts/clear-projects.ts",
-		"db:seed:games-tomorrow": "node --loader ts-node/esm src/scripts/seed-games-tomorrow.ts"
+		"db:seed:games-tomorrow": "node --loader ts-node/esm src/scripts/seed-games-tomorrow.ts",
+		"tunnel": "zrok share reserved doomscrllbackenddev --override-endpoint http://localhost:3000"
 	},
 	"dependencies": {
 		"@aws-sdk/client-s3": "^3.1048.0",

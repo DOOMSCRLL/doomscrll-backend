@@ -305,7 +305,11 @@ export class ProjectsService {
 			return { error: "NOT_FOUND" }
 		}
 
-		if (draft.status === "draft" && Date.now() - new Date(draft.reservedAt!).getTime() > 15 * 60 * 1000) {
+		if (
+			draft.status === "draft" &&
+			draft.reservedAt &&
+			Date.now() - new Date(draft.reservedAt).getTime() > 15 * 60 * 1000
+		) {
 			return { error: "NOT_FOUND" }
 		}
 
@@ -324,7 +328,7 @@ export class ProjectsService {
 			return { error: "NOT_FOUND" as const }
 		}
 
-		if (Date.now() - new Date(draft.reservedAt!).getTime() > 15 * 60 * 1000) {
+		if (draft.reservedAt && Date.now() - new Date(draft.reservedAt).getTime() > 15 * 60 * 1000) {
 			return { error: "NOT_FOUND" as const }
 		}
 

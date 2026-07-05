@@ -4,7 +4,7 @@ import { getErrorResponse } from "../config/errors.js"
 
 export class WebhooksController {
 	static async handleLemonSqueezy(request: FastifyRequest, reply: FastifyReply) {
-		const secret = process.env.LEMONSQUEEZY_WEBHOOK_API_KEY
+		const secret = process.env.LEMONSQUEEZY_WEBHOOK_SECRET
 		const signature = request.headers["x-signature"] as string
 
 		if (!secret || !signature || !request.rawBody) {

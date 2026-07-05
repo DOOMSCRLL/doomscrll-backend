@@ -26,7 +26,7 @@ describe("Profile Routes", () => {
 		fastify.setSerializerCompiler(serializerCompiler)
 		await fastify.register(cookie)
 
-		fastify.decorate("authenticate", async (request: any, reply: any) => {
+		fastify.decorate("authenticate", async (request: any) => {
 			request.user = { id: "test-user-id" }
 		})
 		fastify.decorate("csrfProtection", (req: any, res: any, done: any) => done())
