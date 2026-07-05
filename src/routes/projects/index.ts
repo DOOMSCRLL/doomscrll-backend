@@ -94,7 +94,7 @@ export const projectRoutes: FastifyPluginAsyncZod = async (fastify) => {
 			{
 				schema: {
 					response: {
-						200: z.object({ success: z.boolean(), data: z.object({ referenceId: z.string() }) }),
+						200: z.object({ success: z.boolean(), data: z.object({ referenceId: z.string(), reservedAt: z.any() }) }),
 						404: apiErrorResponseSchema,
 						500: apiErrorResponseSchema,
 					},

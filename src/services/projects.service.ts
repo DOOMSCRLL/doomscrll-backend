@@ -305,18 +305,26 @@ export class ProjectsService {
 			return { error: "NOT_FOUND" }
 		}
 
+		if (draft.status === "draft" && Date.now() - new Date(draft.reservedAt!).getTime() > 15 * 60 * 1000) {
+			return { error: "NOT_FOUND" }
+		}
+
 		return { success: true, data: draft }
 	}
 
 	static async getActiveDraftReference(profileId: string) {
 		const [draft] = await db
-			.select({ referenceId: projects.referenceId })
+			.select({ referenceId: projects.referenceId, reservedAt: projects.reservedAt })
 			.from(projects)
 			.innerJoin(projectLedger, eq(projects.ledgerId, projectLedger.id))
 			.where(and(eq(projectLedger.profileId, profileId), eq(projects.status, "draft")))
 			.limit(1)
 
 		if (!draft) {
+			return { error: "NOT_FOUND" as const }
+		}
+
+		if (Date.now() - new Date(draft.reservedAt!).getTime() > 15 * 60 * 1000) {
 			return { error: "NOT_FOUND" as const }
 		}
 
