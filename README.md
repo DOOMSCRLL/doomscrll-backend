@@ -197,3 +197,4 @@ All backend endpoints format their errors consistently. When `success === false`
 ### Webhooks API (`/webhooks`)
 
 - `POST /lemonsqueezy` - Passive listener for payment events. Expects a raw body to verify the Lemon Squeezy cryptographic `X-Signature`. Upon a successful `order_created` event, extracts the DOOMLIT `referenceId` from `custom_data`, updates the project to `"incomplete"`, and writes an immutable `receipt`.
+  - _Note:_ The backend dynamically verifies the signature against `LEMONSQUEEZY_TEST_WEBHOOK_SECRET` or `LEMONSQUEEZY_LIVE_WEBHOOK_SECRET` based on the payload's `meta.test_mode` flag. If `NODE_ENV=production`, test-mode webhooks are instantly rejected with a 200 OK to prevent database pollution.
