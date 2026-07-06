@@ -15,6 +15,7 @@ vi.mock("../src/services/projects.service.js", () => {
 			getProjectPreviews: vi.fn(),
 			getSingleProject: vi.fn(),
 			getConfirmedProjects: vi.fn(),
+			getFullProject: vi.fn(),
 			getDraft: vi.fn(),
 			cancelProject: vi.fn(),
 			getRules: vi.fn(),
@@ -156,6 +157,34 @@ describe("Project Routes", () => {
 		expect(res.statusCode).toBe(200)
 		expect(res.json().data.length).toBe(1)
 		expect(res.json().data[0].referenceId).toBe("ref123")
+	})
+
+	it("should get full project details", async () => {
+		vi.mocked(ProjectsService.getFullProject).mockResolvedValue({
+			success: true,
+			data: {
+				referenceId: "ref123456789",
+				name: "Full Project",
+				category: "software",
+				primaryPlatform: "web",
+				primaryUrl: "https://example.com",
+				showcaseDate: "2099-12-31",
+				status: "incomplete",
+				reservedAt: new Date().toISOString(),
+				createdAt: new Date().toISOString(),
+				description: "test desc",
+				tags: ["#test"],
+				features: null,
+				coverImagePath: null,
+				screenshotPaths: null,
+				secondaryPlatforms: null,
+				videoUrl: null,
+			},
+		} as any)
+
+		const res = await fastify.inject({ method: "GET", url: "/projects/me/ref123456789" })
+		expect(res.statusCode).toBe(200)
+		expect(res.json().data.name).toBe("Full Project")
 	})
 
 	it("should parse query string properly when fetching previews", async () => {

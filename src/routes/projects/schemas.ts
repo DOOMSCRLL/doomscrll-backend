@@ -90,6 +90,27 @@ export const getConfirmedProjectsResponseSchema = z.object({
 		}),
 	),
 })
+export const getFullProjectResponseSchema = z.object({
+	success: z.boolean(),
+	data: z.object({
+		referenceId: z.string(),
+		showcaseDate: z.coerce.string(),
+		status: z.string(),
+		reservedAt: z.coerce.string().nullable(),
+		name: z.string(),
+		category: z.string(),
+		primaryPlatform: z.string(),
+		primaryUrl: z.string(),
+		description: z.string().nullable(),
+		tags: z.array(z.string()).nullable(),
+		features: z.array(z.string()).nullable(),
+		coverImagePath: z.string().nullable(),
+		screenshotPaths: z.array(z.string()).nullable(),
+		secondaryPlatforms: z.any().nullable(),
+		videoUrl: z.string().nullable(),
+		createdAt: z.coerce.string(),
+	}),
+})
 // #endregion
 
 // #region Audience-related public requests

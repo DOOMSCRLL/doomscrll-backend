@@ -332,6 +332,37 @@ export class ProjectsService {
 		return result
 	}
 
+	static async getFullProject(referenceId: string, profileId: string) {
+		const [projectData] = await db
+			.select({
+				referenceId: projects.referenceId,
+				showcaseDate: projects.showcaseDate,
+				status: projects.status,
+				reservedAt: projects.reservedAt,
+				name: projects.name,
+				category: projects.category,
+				primaryPlatform: projects.primaryPlatform,
+				primaryUrl: projects.primaryUrl,
+				description: projects.description,
+				tags: projects.tags,
+				features: projects.features,
+				coverImagePath: projects.coverImagePath,
+				screenshotPaths: projects.screenshotPaths,
+				secondaryPlatforms: projects.secondaryPlatforms,
+				videoUrl: projects.videoUrl,
+				createdAt: projects.createdAt,
+			})
+			.from(projects)
+			.innerJoin(projectLedger, eq(projects.ledgerId, projectLedger.id))
+			.where(and(eq(projects.referenceId, referenceId), eq(projectLedger.profileId, profileId)))
+
+		if (!projectData) {
+			return { error: "NOT_FOUND" as const }
+		}
+
+		return { success: true as const, data: projectData }
+	}
+
 	static async getActiveDraftReference(profileId: string) {
 		const [draft] = await db
 			.select({ referenceId: projects.referenceId, reservedAt: projects.reservedAt })

@@ -177,6 +177,26 @@ export class ProjectsController {
 		}
 	}
 
+	static async getFullProject(request: FastifyRequest<{ Params: { referenceId: string } }>, reply: FastifyReply) {
+		const { referenceId } = request.params
+		const profileId = request.user.id
+
+		try {
+			const result = await ProjectsService.getFullProject(referenceId, profileId)
+
+			if (result.error === "NOT_FOUND") {
+				return reply.code(404).send(getErrorResponse("NOT_FOUND", undefined, "Project not found or unauthorized."))
+			}
+
+			return reply.code(200).send({ success: true, data: result.data })
+		} catch (error) {
+			request.log.error(error)
+			return reply
+				.code(500)
+				.send(getErrorResponse("INTERNAL_ERROR", undefined, "Failed to fetch full project details."))
+		}
+	}
+
 	static async getActiveDraftReference(request: FastifyRequest, reply: FastifyReply) {
 		const profileId = request.user.id
 
