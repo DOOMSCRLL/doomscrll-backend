@@ -4,7 +4,31 @@ import { db } from "../db/index.js"
 import { projectLedger, projects, receipts } from "../db/schema.js"
 
 export class WebhooksService {
-	static async processLemonSqueezyWebhook(rawBody: string, signature: string, secret: string) {
+	static async processLemonSqueezyWebhook(rawBody: string, signature: string) {
+		let payload
+		try {
+			payload = JSON.parse(rawBody)
+		} catch (error) {
+			return { error: "MALFORMED_JSON" as const, message: String(error) }
+		}
+
+		const isTestMode = payload?.meta?.test_mode === true
+
+		if (process.env.NODE_ENV === "production" && isTestMode) {
+			return { success: true as const, message: "Ignored test mode webhook in production" }
+		}
+
+		const secret = isTestMode
+			? process.env.LEMONSQUEEZY_TEST_WEBHOOK_SECRET
+			: process.env.LEMONSQUEEZY_LIVE_WEBHOOK_SECRET
+
+		if (!secret) {
+			return {
+				error: "MISSING_SECRET" as const,
+				message: `Missing webhook secret for ${isTestMode ? "test" : "live"} mode.`,
+			}
+		}
+
 		const hmac = crypto.createHmac("sha256", secret)
 		const digest = Buffer.from(hmac.update(rawBody).digest("hex"), "utf8")
 		const signatureBuffer = Buffer.from(signature, "utf8")
@@ -13,22 +37,15 @@ export class WebhooksService {
 			return { error: "INVALID_SIGNATURE" as const }
 		}
 
-		let payload
-		try {
-			payload = JSON.parse(rawBody)
-		} catch (error) {
-			return { error: "MALFORMED_JSON" as const, message: String(error) }
-		}
-
-		const eventName = payload.meta.event_name
+		const eventName = payload?.meta?.event_name
 		if (eventName !== "order_created") {
 			return { success: true as const, message: "Event ignored" }
 		}
 
-		const projectReferenceId = payload.meta.custom_data?.project_reference_id
-		const priceCents = payload.data.attributes.total
-		const transactionId = payload.data.id
-		const receiptUrl = payload.data.attributes.urls.receipt
+		const projectReferenceId = payload?.meta?.custom_data?.project_reference_id
+		const priceCents = payload?.data?.attributes?.total
+		const transactionId = payload?.data?.id
+		const receiptUrl = payload?.data?.attributes?.urls?.receipt
 
 		if (!projectReferenceId) {
 			return { error: "MISSING_REFERENCE_ID" as const }

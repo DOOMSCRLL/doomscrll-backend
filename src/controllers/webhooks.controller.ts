@@ -4,15 +4,14 @@ import { getErrorResponse } from "../config/errors.js"
 
 export class WebhooksController {
 	static async handleLemonSqueezy(request: FastifyRequest, reply: FastifyReply) {
-		const secret = process.env.LEMONSQUEEZY_WEBHOOK_SECRET
 		const signature = request.headers["x-signature"] as string
 
-		if (!secret || !signature || !request.rawBody) {
+		if (!signature || !request.rawBody) {
 			return reply.code(400).send(getErrorResponse("INVALID_PAYLOAD", undefined, "Missing signature or raw body."))
 		}
 
 		try {
-			const result = await WebhooksService.processLemonSqueezyWebhook(request.rawBody.toString(), signature, secret)
+			const result = await WebhooksService.processLemonSqueezyWebhook(request.rawBody.toString(), signature)
 
 			if ("error" in result) {
 				if (result.error === "INVALID_SIGNATURE") {
@@ -23,6 +22,9 @@ export class WebhooksController {
 				} else if (result.error === "MISSING_REFERENCE_ID") {
 					request.log.error("An order has been created without DOOMLIT reference ID.")
 					return reply.code(400).send(getErrorResponse("MISSING_REFERENCE_ID"))
+				} else if (result.error === "MISSING_SECRET") {
+					request.log.error(result.message)
+					return reply.code(500).send(getErrorResponse("INTERNAL_ERROR", undefined, result.message))
 				}
 			}
 
