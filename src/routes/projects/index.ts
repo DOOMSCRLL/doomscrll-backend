@@ -8,6 +8,7 @@ import {
 	getProjectFeedQuerySchema,
 	getProjectPreviewQuerySchema,
 	getProjectPreviewResponseSchema,
+	getConfirmedProjectsResponseSchema,
 	getDraftResponseSchema,
 	getProjectRulesResponseSchema,
 	getReservationCountsQuerySchema,
@@ -101,6 +102,19 @@ export const projectRoutes: FastifyPluginAsyncZod = async (fastify) => {
 				},
 			},
 			ProjectsController.getActiveDraftReference,
+		)
+
+		privateRoutes.get(
+			"/me",
+			{
+				schema: {
+					response: {
+						200: getConfirmedProjectsResponseSchema,
+						500: apiErrorResponseSchema,
+					},
+				},
+			},
+			ProjectsController.getConfirmedProjects,
 		)
 
 		privateRoutes.get(

@@ -186,6 +186,7 @@ All backend endpoints format their errors consistently. When `success === false`
 
 ### Projects API - Protected (`/projects`)
 
+- `GET /me` - Fetches all confirmed projects (incomplete or ready) belonging to the authenticated creator. Returns an array of limited project data (`referenceId`, `category`, `name`, `showcaseDate`, `status`). Used for populating creator menus.
 - `POST /reserve` - The transaction bouncer. Verifies UTC deadzones, enforces the 256 daily slot limit, enforces **max 1 draft rule**, and checks the `project_ledger` for the 14-day anti-abuse cooldown. Creates a `"draft"` and returns the `referenceId`.
 - `GET /drafts/active` - Fetches the `referenceId` and `reservedAt` of a creator's active unpaid draft. Dynamically filters out drafts older than 15 minutes to prevent expiration leaks before the hourly cron job runs.
 - `GET /drafts/:referenceId` - Fetches a creator's own active draft (or paid incomplete project). Used heavily during the payment flow to verify checkout states. Dynamically checks for 15-minute expiration.

@@ -316,6 +316,22 @@ export class ProjectsService {
 		return { success: true, data: draft }
 	}
 
+	static async getConfirmedProjects(profileId: string) {
+		const result = await db
+			.select({
+				referenceId: projects.referenceId,
+				category: projects.category,
+				name: projects.name,
+				showcaseDate: projects.showcaseDate,
+				status: projects.status,
+			})
+			.from(projects)
+			.innerJoin(projectLedger, eq(projects.ledgerId, projectLedger.id))
+			.where(and(eq(projectLedger.profileId, profileId), inArray(projects.status, ["incomplete", "ready"])))
+
+		return result
+	}
+
 	static async getActiveDraftReference(profileId: string) {
 		const [draft] = await db
 			.select({ referenceId: projects.referenceId, reservedAt: projects.reservedAt })

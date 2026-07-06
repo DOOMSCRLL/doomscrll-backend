@@ -165,6 +165,18 @@ export class ProjectsController {
 		}
 	}
 
+	static async getConfirmedProjects(request: FastifyRequest, reply: FastifyReply) {
+		const profileId = request.user.id
+
+		try {
+			const result = await ProjectsService.getConfirmedProjects(profileId)
+			return reply.code(200).send({ success: true, data: result })
+		} catch (error) {
+			request.log.error(error)
+			return reply.code(500).send(getErrorResponse("INTERNAL_ERROR", undefined, "Failed to fetch confirmed projects."))
+		}
+	}
+
 	static async getActiveDraftReference(request: FastifyRequest, reply: FastifyReply) {
 		const profileId = request.user.id
 

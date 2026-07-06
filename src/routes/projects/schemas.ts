@@ -78,6 +78,18 @@ export const publishContentSchema = z.object({
 
 export type ReserveProjectPayload = z.infer<typeof reserveProjectSchema>
 export type PatchContentPayload = z.infer<typeof patchContentSchema>
+export const getConfirmedProjectsResponseSchema = z.object({
+	success: z.boolean(),
+	data: z.array(
+		z.object({
+			referenceId: z.string(),
+			category: z.string(),
+			name: z.string(),
+			showcaseDate: z.coerce.string(),
+			status: z.string(),
+		}),
+	),
+})
 // #endregion
 
 // #region Audience-related public requests
