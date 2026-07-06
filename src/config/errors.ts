@@ -67,6 +67,10 @@ export const ERROR_MAP = {
 		code: "MISSING_REFERENCE_ID",
 		message: "Missing project reference ID in payload.",
 	},
+	INVALID_URL: {
+		code: "INVALID_URL",
+		message: "The provided URL does not exist or the product is not published yet.",
+	},
 } as const
 
 export type ErrorCode = keyof typeof ERROR_MAP

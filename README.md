@@ -148,6 +148,7 @@ All backend endpoints format their errors consistently. When `success === false`
 | `SLOT_UNAVAILABLE`     | All DOOMLIT slots have been reserved for this date.    | Max daily slots reached.                             |
 | `COOLDOWN_ACTIVE`      | A project cannot be re-showcased before 14 days...     | Attempting to showcase a URL within 14 days.         |
 | `DRAFT_LIMIT_REACHED`  | You already have an active draft.                      | Attempting to reserve while an unpaid draft exists.  |
+| `INVALID_URL`          | The provided URL does not exist or the product is not published yet. | Active validation caught a 404/400 for primaryUrl.   |
 | `INVALID_STATE`        | The project is not in a valid state for this action.   | E.g. publishing a canceled project, editing a draft. |
 | `VALIDATION_FAILED`    | Missing or invalid required fields.                    | Zod parsing failed (returns `details`).              |
 | `INVALID_DATE`         | Queried date must be in the future.                    | Fetching previews for past dates.                    |

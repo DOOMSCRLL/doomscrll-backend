@@ -8,6 +8,7 @@ import { db } from "../db/index.js"
 import { profiles, projectLedger, projects } from "../db/schema.js"
 import { BUCKET_NAME, r2Client } from "../lib/r2.js"
 import { publishContentSchema } from "../routes/projects/schemas.js"
+import { UrlSanitizer } from "../utils/url-sanitizer.js"
 
 export class ServiceError extends Error {
 	code: string
@@ -41,6 +42,13 @@ export class ProjectsService {
 
 		try {
 			return await db.transaction(async (tx) => {
+				const sanitizedUrl = UrlSanitizer.sanitize(payload.primaryUrl, payload.primaryPlatform)
+				const exists = await UrlSanitizer.validateExists(sanitizedUrl, payload.primaryPlatform)
+
+				if (!exists) {
+					throw new ServiceError("INVALID_URL")
+				}
+
 				const [slotCount] = await tx
 					.select({ value: count() })
 					.from(projects)
@@ -61,7 +69,7 @@ export class ProjectsService {
 				}
 
 				let ledgerEntry = await tx.query.projectLedger.findFirst({
-					where: eq(projectLedger.primaryUrl, payload.primaryUrl),
+					where: eq(projectLedger.primaryUrl, sanitizedUrl),
 				})
 
 				if (ledgerEntry) {
@@ -85,7 +93,7 @@ export class ProjectsService {
 						.insert(projectLedger)
 						.values({
 							profileId,
-							primaryUrl: payload.primaryUrl,
+							primaryUrl: sanitizedUrl,
 						})
 						.returning()
 					ledgerEntry = newLedger
@@ -101,7 +109,7 @@ export class ProjectsService {
 						name: payload.name,
 						category: payload.category,
 						primaryPlatform: payload.primaryPlatform,
-						primaryUrl: payload.primaryUrl,
+						primaryUrl: sanitizedUrl,
 						status: "draft",
 					})
 					.returning()
