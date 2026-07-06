@@ -9,6 +9,7 @@ services:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
+      TZ: UTC
     volumes:
       - pgdata:/var/lib/postgresql/data
     networks:
@@ -31,6 +32,7 @@ services:
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
+      - TZ=UTC
     env_file:
       - .env
     networks:

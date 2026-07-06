@@ -10,7 +10,7 @@ export const projectLedger = d.pgTable("project_ledger", {
 	profileId: d.uuid("profile_id").references(() => profiles.id, { onDelete: "set null" }),
 	primaryUrl: d.text("primary_url").unique().notNull(),
 	lastShowcaseDate: d.date("last_showcase_date"),
-	createdAt: d.timestamp("created_at").defaultNow().notNull(),
+	createdAt: d.timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 })
 
 export const projects = d.pgTable("projects", {
@@ -26,7 +26,7 @@ export const projects = d.pgTable("projects", {
 
 	showcaseDate: d.date("showcase_date").notNull(),
 	status: projectStatusEnum("status").notNull().default("draft"),
-	reservedAt: d.timestamp("reserved_at").defaultNow().notNull(),
+	reservedAt: d.timestamp("reserved_at", { withTimezone: true }).defaultNow().notNull(),
 
 	name: d.varchar("name", { length: DB_RULES.maxLengthProjectTitle }).notNull(),
 	category: d.text("category").notNull(),
@@ -43,7 +43,7 @@ export const projects = d.pgTable("projects", {
 	screenshotPaths: d.text("screenshot_paths").array(),
 	videoUrl: d.text("video_url"),
 
-	createdAt: d.timestamp("created_at").defaultNow().notNull(),
+	createdAt: d.timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 })
 
 export const receiptStatusEnum = d.pgEnum("receipt_status", ["succeeded", "refunded", "disputed"])
@@ -64,5 +64,5 @@ export const receipts = d.pgTable("receipts", {
 	receiptUrl: d.text("receipt_url"),
 
 	status: receiptStatusEnum("status").notNull().default("succeeded"),
-	createdAt: d.timestamp("created_at").defaultNow().notNull(),
+	createdAt: d.timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 })
