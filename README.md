@@ -138,26 +138,26 @@ All backend endpoints format their errors consistently. When `success === false`
 
 ### Predefined Error Codes (`src/config/errors.ts`)
 
-| Code                   | Default Message                                        | Trigger Condition                                    |
-| :--------------------- | :----------------------------------------------------- | :--------------------------------------------------- |
-| `INTERNAL_ERROR`       | An internal server error occurred.                     | Unhandled exceptions or 500s.                        |
-| `NOT_FOUND`            | The requested resource was not found.                  | Missing profile, project, etc.                       |
-| `UNAUTHORIZED`         | You are not authorized to perform this action.         | Missing session or manipulating another user's data. |
-| `INVALID_PAYLOAD`      | The provided payload is invalid.                       | Logic failures like booking past dates.              |
-| `DEADZONE_ACTIVE`      | DOOMLIT reservations for the next day closes at 23:00. | Booking tomorrow's slot after 23:00 UTC.             |
-| `SLOT_UNAVAILABLE`     | All DOOMLIT slots have been reserved for this date.    | Max daily slots reached.                             |
-| `COOLDOWN_ACTIVE`      | A project cannot be re-showcased before 14 days...     | Attempting to showcase a URL within 14 days.         |
-| `DRAFT_LIMIT_REACHED`  | You already have an active draft.                      | Attempting to reserve while an unpaid draft exists.  |
+| Code                   | Default Message                                                      | Trigger Condition                                    |
+| :--------------------- | :------------------------------------------------------------------- | :--------------------------------------------------- |
+| `INTERNAL_ERROR`       | An internal server error occurred.                                   | Unhandled exceptions or 500s.                        |
+| `NOT_FOUND`            | The requested resource was not found.                                | Missing profile, project, etc.                       |
+| `UNAUTHORIZED`         | You are not authorized to perform this action.                       | Missing session or manipulating another user's data. |
+| `INVALID_PAYLOAD`      | The provided payload is invalid.                                     | Logic failures like booking past dates.              |
+| `DEADZONE_ACTIVE`      | DOOMLIT reservations for the next day closes at 23:00.               | Booking tomorrow's slot after 23:00 UTC.             |
+| `SLOT_UNAVAILABLE`     | All DOOMLIT slots have been reserved for this date.                  | Max daily slots reached.                             |
+| `COOLDOWN_ACTIVE`      | A project cannot be re-showcased before 14 days...                   | Attempting to showcase a URL within 14 days.         |
+| `DRAFT_LIMIT_REACHED`  | You already have an active draft.                                    | Attempting to reserve while an unpaid draft exists.  |
 | `INVALID_URL`          | The provided URL does not exist or the product is not published yet. | Active validation caught a 404/400 for primaryUrl.   |
-| `INVALID_STATE`        | The project is not in a valid state for this action.   | E.g. publishing a canceled project, editing a draft. |
-| `VALIDATION_FAILED`    | Missing or invalid required fields.                    | Zod parsing failed (returns `details`).              |
-| `INVALID_DATE`         | Queried date must be in the future.                    | Fetching previews for past dates.                    |
-| `SESSION_EXPIRED`      | Session expired or invalid.                            | Expired `session_id` cookie.                         |
-| `INVALID_OTP`          | Invalid or expired code.                               | Wrong OTP code on login.                             |
-| `USERNAME_TAKEN`       | That username is already taken.                        | Updating profile to a taken handle.                  |
-| `INVALID_SIGNATURE`    | Invalid webhook signature.                             | Lemon Squeezy HMAC mismatch.                         |
-| `MALFORMED_JSON`       | Malformed JSON body.                                   | Invalid webhook body.                                |
-| `MISSING_REFERENCE_ID` | Missing project reference ID in payload.               | Webhook missing custom data.                         |
+| `INVALID_STATE`        | The project is not in a valid state for this action.                 | E.g. publishing a canceled project, editing a draft. |
+| `VALIDATION_FAILED`    | Missing or invalid required fields.                                  | Zod parsing failed (returns `details`).              |
+| `INVALID_DATE`         | Queried date must be in the future.                                  | Fetching previews for past dates.                    |
+| `SESSION_EXPIRED`      | Session expired or invalid.                                          | Expired `session_id` cookie.                         |
+| `INVALID_OTP`          | Invalid or expired code.                                             | Wrong OTP code on login.                             |
+| `USERNAME_TAKEN`       | That username is already taken.                                      | Updating profile to a taken handle.                  |
+| `INVALID_SIGNATURE`    | Invalid webhook signature.                                           | Lemon Squeezy HMAC mismatch.                         |
+| `MALFORMED_JSON`       | Malformed JSON body.                                                 | Invalid webhook body.                                |
+| `MISSING_REFERENCE_ID` | Missing project reference ID in payload.                             | Webhook missing custom data.                         |
 
 ---
 
