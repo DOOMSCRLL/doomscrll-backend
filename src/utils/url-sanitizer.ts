@@ -76,7 +76,7 @@ export class UrlSanitizer {
 
 			try {
 				const res = await fetch(`https://store.steampowered.com/api/appdetails?appids=${appId}`)
-				const data = await res.json()
+				const data = (await res.json()) as any
 				return data[appId]?.success === true
 			} catch (error) {
 				return true // Benefit of the doubt on network failure
@@ -89,7 +89,7 @@ export class UrlSanitizer {
 
 			try {
 				const res = await fetch(`https://itunes.apple.com/lookup?id=${id}`)
-				const data = await res.json()
+				const data = (await res.json()) as any
 				return data.resultCount > 0
 			} catch (error) {
 				return true
