@@ -193,7 +193,7 @@ All backend endpoints format their errors consistently. When `success === false`
 - `GET /drafts/active` - Fetches the `referenceId` and `reservedAt` of a creator's active unpaid draft. Dynamically filters out drafts older than 15 minutes to prevent expiration leaks before the hourly cron job runs.
 - `GET /drafts/:referenceId` - Fetches a creator's own active draft (or paid incomplete project). Used heavily during the payment flow to verify checkout states. Dynamically checks for 15-minute expiration.
 - `DELETE /:referenceId` - Cancels the project (hard delete for unpaid drafts, `"canceled"` status update for paid).
-- `POST /:referenceId/upload-urls` - The CDN broker. Generates and returns time-limited, pre-signed Cloudflare R2 URLs for direct client-to-CDN `.webp` image uploads.
+- `POST /:referenceId/upload-urls` - The CDN broker. Generates and returns time-limited, pre-signed Cloudflare R2 URLs for direct client-to-CDN `.webp` image uploads, along with their final public CDN URLs.
 - `PATCH /:referenceId` - Auto-save route. Accepts partial content payloads to update the database row.
 - `POST /:referenceId/publish` - The final lock-in. Validates the existing database row against the strict Zod publish schema. If all required content is present, flips the status to `"ready"`.
 

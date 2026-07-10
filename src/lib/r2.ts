@@ -18,3 +18,8 @@ export const r2Client = new S3Client({
 })
 
 export const BUCKET_NAME = process.env.R2_BUCKET_NAME
+export const CDN_DOMAIN = process.env.CDN_DOMAIN
+
+if (!CDN_DOMAIN) {
+	throw new Error("[FATAL] INTERNAL_ERROR: Missing CDN_DOMAIN environment variable.")
+}

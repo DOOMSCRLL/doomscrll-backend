@@ -6,7 +6,7 @@ import { nanoid } from "nanoid"
 import { DB_RULES } from "../config/index.js"
 import { db } from "../db/index.js"
 import { profiles, projectLedger, projects } from "../db/schema.js"
-import { BUCKET_NAME, r2Client } from "../lib/r2.js"
+import { BUCKET_NAME, CDN_DOMAIN, r2Client } from "../lib/r2.js"
 import { publishContentSchema } from "../routes/projects/schemas.js"
 import { UrlSanitizer } from "../utils/url-sanitizer.js"
 
@@ -155,13 +155,13 @@ export class ProjectsService {
 				ContentType: "image/webp",
 			})
 			const uploadUrl = await getSignedUrl(r2Client, shotCommand, { expiresIn: 3600 })
-			screenshots.push({ uploadUrl, path: shotKey })
+			screenshots.push({ uploadUrl, publicUrl: `${CDN_DOMAIN}/${shotKey}` })
 		}
 
 		return {
 			success: true as const,
 			data: {
-				cover: { uploadUrl: coverUploadUrl, path: coverKey },
+				cover: { uploadUrl: coverUploadUrl, publicUrl: `${CDN_DOMAIN}/${coverKey}` },
 				screenshots: screenshots,
 			},
 		}
