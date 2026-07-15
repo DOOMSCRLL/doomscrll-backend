@@ -454,6 +454,11 @@ export class ProjectsService {
 				end: DB_RULES.timeUTCServerReset,
 				timezone: "UTC",
 			},
+			maxTagCount: DB_RULES.limitTags,
+			maxScreenshotCount: DB_RULES.limitScreenshots,
+			maxImageFileSizeMB: DB_RULES.maxSizeUploadedImage,
+			maxLengthProjectName: DB_RULES.maxLengthProjectTitle,
+			maxLengthProjectDescription: DB_RULES.maxLengthProjectDescription,
 		}
 	}
 

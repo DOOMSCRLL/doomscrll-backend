@@ -191,6 +191,11 @@ export const getProjectRulesResponseSchema = z.object({
 			end: z.string(),
 			timezone: z.literal("UTC"),
 		}),
+		maxTagCount: z.number().int(),
+		maxScreenshotCount: z.number().int(),
+		maxImageFileSizeMB: z.number().int(),
+		maxLengthProjectName: z.number().int(),
+		maxLengthProjectDescription: z.number().int(),
 	}),
 })
 export type GetProjectRulesResponse = z.infer<typeof getProjectRulesResponseSchema>
