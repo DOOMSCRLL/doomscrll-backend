@@ -179,7 +179,7 @@ All backend endpoints format their errors consistently. When `success === false`
 
 ### Projects API - Public (`/projects`)
 
-- `GET /rules` - Exposes backend configuration constants (e.g., daily slot limits, deadzones, cooldown periods) to dynamically synchronize the frontend UI components.
+- `GET /rules` - Exposes backend configuration constants (e.g., daily slot limits, deadzones, cooldown periods, max tag count, max screenshot count, file size limits, max length rules) to dynamically synchronize the frontend UI components.
 - `GET /reservation-counts` - Query `{ year?, month? }`. Returns an optimized key-value map of active reservation counts per day for a given month and year, enabling the frontend calendar to instantly render slot availability.
 - `GET /` - Fetches a batched feed of today's active DOOMLITs (`status = 'ready'`). Supports dynamic filtering (`category`, `tag`, and deep JSONB search for `platform`).
 - `GET /preview` - Query `{ date, category }`. Returns a limited preview (name, category, tags, author) of future DOOMLITs. Fails with a 400 if requested date is in the past.
