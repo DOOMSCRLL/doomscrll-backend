@@ -53,6 +53,11 @@ describe("Project Routes", () => {
 				end: "00:00",
 				timezone: "UTC",
 			},
+			maxTagCount: 3,
+			maxScreenshotCount: 8,
+			maxImageFileSizeMB: 5,
+			maxLengthProjectName: 50,
+			maxLengthProjectDescription: 300,
 		} as any)
 
 		const response = await fastify.inject({

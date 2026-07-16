@@ -31,6 +31,12 @@ export const reserveProjectSchema = z.object({
 })
 
 export const patchContentSchema = z.object({
+	name: z
+		.string()
+		.min(3, "Name is required")
+		.max(DB_RULES.maxLengthProjectTitle, `Name cannot exceed ${DB_RULES.maxLengthProjectTitle} characters`)
+		.optional(),
+	category: z.string().min(1, "Category is required").optional(),
 	description: z.string().max(DB_RULES.maxLengthProjectDescription).optional(),
 	tags: z.array(tagRule).max(DB_RULES.limitTags).optional(),
 	features: z.array(z.string()).optional(),
