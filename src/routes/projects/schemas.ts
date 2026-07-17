@@ -54,6 +54,7 @@ export const patchContentSchema = z.object({
 		)
 		.optional(),
 	videoUrl: z.url().optional(),
+	locale: z.string().optional(),
 })
 
 export const publishContentSchema = z.object({
