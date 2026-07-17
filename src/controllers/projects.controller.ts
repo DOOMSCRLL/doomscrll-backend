@@ -1,7 +1,8 @@
 import { FastifyReply, FastifyRequest } from "fastify"
-import { ProjectsService } from "../services/projects.service.js"
-import { GetProjectPreviewQuery, GetReservationCountsQuery } from "../routes/projects/schemas.js"
 import { getErrorResponse } from "../config/errors.js"
+import { getDictionaryFor } from "../config/locales/index.js"
+import { GetProjectPreviewQuery, GetReservationCountsQuery } from "../routes/projects/schemas.js"
+import { ProjectsService } from "../services/projects.service.js"
 
 export class ProjectsController {
 	static async reserve(request: FastifyRequest<{ Body: any }>, reply: FastifyReply) {
@@ -51,19 +52,22 @@ export class ProjectsController {
 		const { screenshotCount } = request.body
 		const profileId = request.user.id
 
+		const dict = getDictionaryFor((request.body as any).locale).responses
+
 		try {
 			const result = await ProjectsService.getUploadUrls(referenceId, screenshotCount, profileId)
 
-			if (result.error === "UNAUTHORIZED") {
-				return reply.code(403).send(getErrorResponse("UNAUTHORIZED"))
-			} else if (result.error === "INVALID_STATE") {
-				return reply.code(400).send(getErrorResponse("INVALID_STATE", undefined, "Project is not awaiting content."))
+			switch (result.error) {
+				case "UNAUTHORIZED":
+					return reply.code(403).send(getErrorResponse("UNAUTHORIZED", undefined, dict.common.UNAUTHORIZED))
+				case "INVALID_STATE":
+					return reply.code(400).send(getErrorResponse("INVALID_STATE", undefined, dict.common.INVALID_STATE))
+				default:
+					return reply.send({ success: true, data: result.data, message: dict.getUploadUrls.SUCCESS })
 			}
-
-			return reply.send({ success: true, data: result.data })
 		} catch (error) {
 			request.log.error(error)
-			return reply.code(500).send(getErrorResponse("INTERNAL_ERROR", undefined, "Failed to generate upload URLs."))
+			return reply.code(500).send(getErrorResponse("INTERNAL_ERROR", undefined, dict.getUploadUrls.INTERNAL_ERROR))
 		}
 	}
 
@@ -75,19 +79,22 @@ export class ProjectsController {
 		const payload = request.body
 		const profileId = request.user.id
 
+		const dict = getDictionaryFor((payload as any).locale).responses
+
 		try {
 			const result = await ProjectsService.updateProject(referenceId, payload, profileId)
 
-			if (result.error === "UNAUTHORIZED") {
-				return reply.code(403).send(getErrorResponse("UNAUTHORIZED"))
-			} else if (result.error === "INVALID_STATE") {
-				return reply.code(400).send(getErrorResponse("INVALID_STATE", undefined, "Project is not awaiting content."))
+			switch (result.error) {
+				case "UNAUTHORIZED":
+					return reply.code(403).send(getErrorResponse("UNAUTHORIZED", undefined, dict.common.UNAUTHORIZED))
+				case "INVALID_STATE":
+					return reply.code(400).send(getErrorResponse("INVALID_STATE", undefined, dict.common.INVALID_STATE))
+				default:
+					return reply.code(200).send({ success: true, message: dict.updateProject.SUCCESS })
 			}
-
-			return reply.code(200).send({ success: true, message: "Project details are updated." })
 		} catch (error) {
 			request.log.error(error)
-			return reply.code(500).send(getErrorResponse("INTERNAL_ERROR", undefined, "Failed to save project content."))
+			return reply.code(500).send(getErrorResponse("INTERNAL_ERROR", undefined, dict.updateProject.INTERNAL_ERROR))
 		}
 	}
 
@@ -95,25 +102,29 @@ export class ProjectsController {
 		const { referenceId } = request.params
 		const profileId = request.user.id
 
+		const dict = getDictionaryFor((request.body as any)?.locale).responses
+
 		try {
 			const result = await ProjectsService.publishProject(referenceId, profileId)
 
 			switch (result.error) {
 				case "UNAUTHORIZED":
-					return reply.code(403).send(getErrorResponse("UNAUTHORIZED"))
+					return reply.code(403).send(getErrorResponse("UNAUTHORIZED", undefined, dict.common.UNAUTHORIZED))
 				case "INVALID_STATE":
-					return reply.code(400).send(getErrorResponse("INVALID_STATE", undefined, "Project is not awaiting content."))
+					return reply.code(400).send(getErrorResponse("INVALID_STATE", undefined, dict.common.INVALID_STATE))
 				case "VALIDATION_FAILED":
-					return reply.code(400).send(getErrorResponse("VALIDATION_FAILED", result.issues))
+					return reply
+						.code(400)
+						.send(getErrorResponse("VALIDATION_FAILED", result.issues, dict.publishProject.VALIDATION_FAILED))
 				default:
 					return reply.code(200).send({
 						success: true,
-						message: "Project is ready for showcase.",
+						message: dict.publishProject.SUCCESS,
 					})
 			}
 		} catch (error) {
 			request.log.error(error)
-			return reply.code(500).send(getErrorResponse("INTERNAL_ERROR", undefined, "Failed to publish project."))
+			return reply.code(500).send(getErrorResponse("INTERNAL_ERROR", undefined, dict.publishProject.INTERNAL_ERROR))
 		}
 	}
 

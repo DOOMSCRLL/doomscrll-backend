@@ -12,6 +12,6 @@ export interface ApiError<T> {
 	details?: Record<string, T>
 }
 
-export type ApiResponse<T = void> = 
-	| { success: true; data: T; message?: string } 
+export type ApiResponse<T = void> =
+	| { success: true; data: T; message?: string }
 	| { success: false; error: ApiError<T> }

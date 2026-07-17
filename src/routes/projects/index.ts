@@ -170,7 +170,7 @@ export const projectRoutes: FastifyPluginAsyncZod = async (fastify) => {
 			{
 				schema: {
 					params: z.object({ referenceId: z.string().length(12) }),
-					body: z.object({ 
+					body: z.object({
 						screenshotCount: z.number().int().min(0).max(DB_RULES.limitScreenshots),
 						locale: z.string().optional(),
 					}),
