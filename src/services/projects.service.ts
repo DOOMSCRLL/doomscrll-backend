@@ -155,13 +155,13 @@ export class ProjectsService {
 				ContentType: "image/webp",
 			})
 			const uploadUrl = await getSignedUrl(r2Client, shotCommand, { expiresIn: 3600 })
-			screenshots.push({ uploadUrl, publicUrl: `${CDN_DOMAIN}/${shotKey}` })
+			screenshots.push({ uploadUrl, publicUrl: `${CDN_DOMAIN}/${shotKey}`, path: shotKey })
 		}
 
 		return {
 			success: true as const,
 			data: {
-				cover: { uploadUrl: coverUploadUrl, publicUrl: `${CDN_DOMAIN}/${coverKey}` },
+				cover: { uploadUrl: coverUploadUrl, publicUrl: `${CDN_DOMAIN}/${coverKey}`, path: coverKey },
 				screenshots: screenshots,
 			},
 		}
