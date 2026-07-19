@@ -23,6 +23,8 @@ export class ProjectsController {
 					return reply.code(429).send(getErrorResponse("COOLDOWN_ACTIVE", result.details))
 				} else if (result.error === "DRAFT_LIMIT_REACHED") {
 					return reply.code(409).send(getErrorResponse("DRAFT_LIMIT_REACHED"))
+				} else if (result.error === "INVALID_URL") {
+					return reply.code(400).send(getErrorResponse("INVALID_URL"))
 				}
 			}
 
