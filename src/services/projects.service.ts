@@ -197,10 +197,8 @@ export class ProjectsService {
 				.where(eq(projects.referenceId, referenceId))
 
 			if (!projectData || projectData.project_ledger.profileId !== profileId) {
-				tx.rollback()
 				return { error: "UNAUTHORIZED" as const }
 			} else if (projectData.projects.status !== "incomplete" && projectData.projects.status !== "ready") {
-				tx.rollback()
 				return { error: "INVALID_STATE" as const }
 			}
 
@@ -216,7 +214,6 @@ export class ProjectsService {
 			})
 
 			if (!validation.success) {
-				tx.rollback()
 				return { error: "VALIDATION_FAILED" as const, issues: validation.error.flatten().fieldErrors }
 			}
 

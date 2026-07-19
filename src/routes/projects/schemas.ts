@@ -39,12 +39,12 @@ export const patchContentSchema = z.object({
 	category: z.string().min(1, "Category is required").optional(),
 	description: z.string().max(DB_RULES.maxLengthProjectDescription).optional(),
 	tags: z.array(tagRule).max(DB_RULES.limitTags).optional(),
-	features: z.array(z.string()).optional(),
-	coverImagePath: z.string().startsWith("projects/").endsWith(".webp").optional(),
+	features: z.array(z.string()).nullish(),
+	coverImagePath: z.string().startsWith("projects/").endsWith(".webp").nullish(),
 	screenshotPaths: z
 		.array(z.string().startsWith("projects/").endsWith(".webp"))
 		.max(DB_RULES.limitScreenshots)
-		.optional(),
+		.nullish(),
 	secondaryPlatforms: z
 		.array(
 			z.object({
@@ -52,8 +52,8 @@ export const patchContentSchema = z.object({
 				url: z.url(),
 			}),
 		)
-		.optional(),
-	videoUrl: z.url().optional(),
+		.nullish(),
+	videoUrl: z.union([z.url(), z.literal("")]).nullish(),
 	locale: z.string().optional(),
 })
 
@@ -67,11 +67,11 @@ export const publishContentSchema = z.object({
 		),
 	tags: z.array(tagRule).min(1).max(DB_RULES.limitTags, `Maximum of ${DB_RULES.limitTags} tags allowed`),
 	coverImagePath: z.string().startsWith("projects/").endsWith(".webp", "Cover image must be a WebP file."),
-	features: z.array(z.string()).optional(),
+	features: z.array(z.string()).nullish(),
 	screenshotPaths: z
 		.array(z.string().startsWith("projects/").endsWith(".webp"))
 		.max(DB_RULES.limitScreenshots)
-		.optional(),
+		.nullish(),
 	secondaryPlatforms: z
 		.array(
 			z.object({
@@ -79,8 +79,8 @@ export const publishContentSchema = z.object({
 				url: z.url(),
 			}),
 		)
-		.optional(),
-	videoUrl: z.url().optional(),
+		.nullish(),
+	videoUrl: z.union([z.url(), z.literal("")]).nullish(),
 })
 
 export type ReserveProjectPayload = z.infer<typeof reserveProjectSchema>
