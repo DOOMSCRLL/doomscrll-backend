@@ -66,7 +66,7 @@ export const publishContentSchema = z.object({
 			`Description cannot exceet ${DB_RULES.maxLengthProjectDescription} characters`,
 		),
 	tags: z.array(tagRule).min(1).max(DB_RULES.limitTags, `Maximum of ${DB_RULES.limitTags} tags allowed`),
-	coverImagePath: z.string().startsWith("projects/").endsWith(".wepb", "Cover image must be a WebP file."),
+	coverImagePath: z.string().startsWith("projects/").endsWith(".webp", "Cover image must be a WebP file."),
 	features: z.array(z.string()).optional(),
 	screenshotPaths: z
 		.array(z.string().startsWith("projects/").endsWith(".webp"))
