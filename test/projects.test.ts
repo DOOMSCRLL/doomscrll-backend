@@ -284,6 +284,7 @@ describe("Project Routes", () => {
 		const res = await fastify.inject({
 			method: "POST",
 			url: "/projects/ref123456789/publish",
+			payload: {},
 		})
 		expect(res.statusCode).toBe(200)
 	})

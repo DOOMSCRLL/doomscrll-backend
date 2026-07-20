@@ -1,4 +1,4 @@
-import { PutObjectCommand } from "@aws-sdk/client-s3"
+import { DeleteObjectCommand, PutObjectCommand } from "@aws-sdk/client-s3"
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 import { and, arrayContains, count, eq, gte, inArray, lte, ne, or, sql, SQL } from "drizzle-orm"
 import { nanoid } from "nanoid"
@@ -173,6 +173,8 @@ export class ProjectsService {
 				id: projects.id,
 				status: projects.status,
 				ownerId: projectLedger.profileId,
+				coverImagePath: projects.coverImagePath,
+				screenshotPaths: projects.screenshotPaths,
 			})
 			.from(projects)
 			.innerJoin(projectLedger, eq(projects.ledgerId, projectLedger.id))
@@ -184,7 +186,33 @@ export class ProjectsService {
 			return { error: "INVALID_STATE" as const }
 		}
 
+		const orphansToDelete: string[] = []
+
+		if (
+			payload.coverImagePath !== undefined &&
+			projectData.coverImagePath &&
+			payload.coverImagePath !== projectData.coverImagePath
+		) {
+			orphansToDelete.push(projectData.coverImagePath)
+		}
+
+		if (payload.screenshotPaths !== undefined && projectData.screenshotPaths) {
+			const newScreenshots = new Set(payload.screenshotPaths || [])
+			for (const oldShot of projectData.screenshotPaths) {
+				if (!newScreenshots.has(oldShot)) {
+					orphansToDelete.push(oldShot)
+				}
+			}
+		}
+
 		await db.update(projects).set(payload).where(eq(projects.id, projectData.id))
+
+		if (orphansToDelete.length > 0) {
+			Promise.allSettled(
+				orphansToDelete.map((key) => r2Client.send(new DeleteObjectCommand({ Bucket: BUCKET_NAME, Key: key }))),
+			).catch((err) => console.error("Failed to delete orphaned CDN images:", err))
+		}
+
 		return { success: true as const }
 	}
 
