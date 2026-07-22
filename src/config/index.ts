@@ -1,9 +1,7 @@
 export const DB_RULES = {
-	limitDailySlots: 256,
+	limitDailySlots: 40,
 	limitMonthlyProjectsPerAccount: 2,
 	durationProjectCooldown: 14, // days
-
-	limitReservationWindow: 30, // days
 
 	timeUTCServerReset: "00:00",
 	hourUTCDeadzone: 23, // hours

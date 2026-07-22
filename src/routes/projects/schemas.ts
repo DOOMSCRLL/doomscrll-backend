@@ -59,7 +59,6 @@ export const patchContentSchema = z.object({
 
 export const rescheduleProjectSchema = z.object({
 	newDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be strictly YYYY-MM-DD to prevent timezone shifting"),
-	locale: z.string().optional(),
 })
 
 export type RescheduleProjectPayload = z.infer<typeof rescheduleProjectSchema>
@@ -197,7 +196,6 @@ export const getProjectRulesResponseSchema = z.object({
 	success: z.literal(true),
 	data: z.object({
 		maxReservationsPerDay: z.number().int(),
-		reservationWindowDays: z.number().int(),
 		cooldownPeriodDays: z.number().int(),
 		draftExpirationMinutes: z.number().int(),
 		deadzoneWindow: z.object({

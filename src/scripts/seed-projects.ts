@@ -19,7 +19,7 @@ async function seedProjects() {
 	const currentYear = now.getFullYear()
 	const currentMonth = now.getMonth() + 1 // 1-12
 
-	const endWindow = new Date(now.getTime() + DB_RULES.limitReservationWindow * 24 * 60 * 60 * 1000)
+	const endWindow = new Date(now.getTime() + 365 * 24 * 60 * 60 * 1000)
 	const endYear = endWindow.getFullYear()
 	const endMonth = endWindow.getMonth() + 1
 

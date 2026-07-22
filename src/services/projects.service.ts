@@ -533,7 +533,6 @@ export class ProjectsService {
 	static getRules() {
 		return {
 			maxReservationsPerDay: DB_RULES.limitDailySlots,
-			reservationWindowDays: DB_RULES.limitReservationWindow,
 			cooldownPeriodDays: DB_RULES.durationProjectCooldown,
 			draftExpirationMinutes: DB_RULES.durationPaymentTimeout,
 			deadzoneWindow: {

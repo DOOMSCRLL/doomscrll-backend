@@ -47,23 +47,21 @@ export class ProjectsController {
 	}
 
 	static async reschedule(
-		request: FastifyRequest<{ Params: { referenceId: string }; Body: { newDate: string; locale?: string } }>,
+		request: FastifyRequest<{ Params: { referenceId: string }; Body: { newDate: string } }>,
 		reply: FastifyReply,
 	) {
 		const { referenceId } = request.params
 		const { newDate } = request.body
 		const profileId = request.user.id
 
-		const dict = getDictionaryFor(request.body.locale as any).responses
-
 		try {
 			const result = await ProjectsService.rescheduleProject(referenceId, newDate, profileId)
 
 			if ("error" in result) {
 				if (result.error === "UNAUTHORIZED") {
-					return reply.code(403).send(getErrorResponse("UNAUTHORIZED", undefined, dict.common.UNAUTHORIZED))
+					return reply.code(403).send(getErrorResponse("UNAUTHORIZED"))
 				} else if (result.error === "INVALID_STATE") {
-					return reply.code(400).send(getErrorResponse("INVALID_STATE", undefined, dict.common.INVALID_STATE))
+					return reply.code(400).send(getErrorResponse("INVALID_STATE"))
 				} else if (result.error === "INVALID_PAYLOAD") {
 					return reply
 						.code(400)
@@ -77,35 +75,19 @@ export class ProjectsController {
 				} else if (result.error === "DEADZONE_ACTIVE") {
 					return reply.code(403).send(getErrorResponse("DEADZONE_ACTIVE", undefined, (result as any).message))
 				} else if (result.error === "SLOT_UNAVAILABLE") {
-					return reply
-						.code(409)
-						.send(
-							getErrorResponse(
-								"SLOT_UNAVAILABLE",
-								undefined,
-								(dict as any).rescheduleProject?.SLOT_UNAVAILABLE || "Slot unavailable for this date.",
-							),
-						)
+					return reply.code(409).send(getErrorResponse("SLOT_UNAVAILABLE"))
 				}
 			}
 
 			if ("success" in result) {
 				return reply.code(200).send({
 					success: true,
-					message: (dict as any).rescheduleProject?.SUCCESS || "DOOMLIT successfully rescheduled.",
+					message: "DOOMLIT successfully rescheduled.",
 				})
 			}
 		} catch (error) {
 			request.log.error(error)
-			return reply
-				.code(500)
-				.send(
-					getErrorResponse(
-						"INTERNAL_ERROR",
-						undefined,
-						(dict as any).rescheduleProject?.INTERNAL_ERROR || "Failed to reschedule DOOMLIT.",
-					),
-				)
+			return reply.code(500).send(getErrorResponse("INTERNAL_ERROR"))
 		}
 	}
 
