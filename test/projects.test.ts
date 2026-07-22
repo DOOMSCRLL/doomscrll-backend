@@ -20,6 +20,7 @@ vi.mock("../src/services/projects.service.js", () => {
 			cancelProject: vi.fn(),
 			getRules: vi.fn(),
 			getReservationCounts: vi.fn(),
+			rescheduleProject: vi.fn(),
 		},
 	}
 })
@@ -287,5 +288,35 @@ describe("Project Routes", () => {
 			payload: {},
 		})
 		expect(res.statusCode).toBe(200)
+	})
+
+	it("should reschedule project successfully", async () => {
+		vi.mocked(ProjectsService.rescheduleProject).mockResolvedValue({ success: true } as any)
+		const res = await fastify.inject({
+			method: "POST",
+			url: "/projects/ref123456789/reschedule",
+			payload: { newDate: "2099-12-31" },
+		})
+		expect(res.statusCode).toBe(200)
+		expect(res.json().success).toBe(true)
+	})
+
+	it("should fail to reschedule project if validation fails", async () => {
+		const res = await fastify.inject({
+			method: "POST",
+			url: "/projects/ref123456789/reschedule",
+			payload: { newDate: "invalid" },
+		})
+		expect(res.statusCode).toBe(400)
+	})
+
+	it("should fail to reschedule project if unauthorized", async () => {
+		vi.mocked(ProjectsService.rescheduleProject).mockResolvedValue({ error: "UNAUTHORIZED" } as any)
+		const res = await fastify.inject({
+			method: "POST",
+			url: "/projects/ref123456789/reschedule",
+			payload: { newDate: "2099-12-31" },
+		})
+		expect(res.statusCode).toBe(403)
 	})
 })

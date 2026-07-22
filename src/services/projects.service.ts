@@ -124,6 +124,68 @@ export class ProjectsService {
 		}
 	}
 
+	static async rescheduleProject(referenceId: string, newDate: string, profileId: string) {
+		const now = new Date()
+		const utcHour = now.getUTCHours()
+		const utcDate = now.toISOString().split("T")[0]
+
+		const tomorrow = new Date(now)
+		tomorrow.setUTCDate(now.getUTCDate() + 1)
+		const utcTomorrow = tomorrow.toISOString().split("T")[0]
+
+		if (newDate <= utcDate) {
+			return { error: "INVALID_PAYLOAD" as const, message: "Cannot reschedule to today or a past date." }
+		}
+		if (newDate === utcTomorrow && utcHour >= DB_RULES.hourUTCDeadzone) {
+			return {
+				error: "DEADZONE_ACTIVE" as const,
+				message: "DOOMLIT reservations for the next day closes at 23:00. Deadzone is active",
+			}
+		}
+
+		try {
+			return await db.transaction(async (tx) => {
+				const [projectData] = await tx
+					.select()
+					.from(projects)
+					.innerJoin(projectLedger, eq(projects.ledgerId, projectLedger.id))
+					.where(eq(projects.referenceId, referenceId))
+
+				if (!projectData || projectData.project_ledger.profileId !== profileId) {
+					throw new ServiceError("UNAUTHORIZED")
+				}
+				if (projectData.projects.status !== "incomplete" && projectData.projects.status !== "ready") {
+					throw new ServiceError("INVALID_STATE")
+				}
+				if (projectData.projects.showcaseDate === newDate) {
+					throw new ServiceError("INVALID_PAYLOAD", { message: "The DOOMLIT is already scheduled for this date." })
+				}
+
+				const [slotCount] = await tx
+					.select({ value: count() })
+					.from(projects)
+					.where(and(eq(projects.showcaseDate, newDate), ne(projects.status, "canceled")))
+
+				if (slotCount.value >= DB_RULES.limitDailySlots) {
+					throw new ServiceError("SLOT_UNAVAILABLE")
+				}
+
+				await tx.update(projects).set({ showcaseDate: newDate }).where(eq(projects.id, projectData.projects.id))
+				await tx
+					.update(projectLedger)
+					.set({ lastShowcaseDate: newDate })
+					.where(eq(projectLedger.id, projectData.project_ledger.id))
+
+				return { success: true as const }
+			})
+		} catch (error) {
+			if (error instanceof ServiceError) {
+				return { error: error.code as any, details: error.details }
+			}
+			throw error
+		}
+	}
+
 	static async getUploadUrls(referenceId: string, screenshotCount: number, profileId: string) {
 		const [projectData] = await db
 			.select({ status: projects.status, ownerId: projectLedger.profileId })

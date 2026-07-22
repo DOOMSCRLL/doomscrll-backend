@@ -195,6 +195,7 @@ All backend endpoints format their errors consistently. When `success === false`
 - `DELETE /:referenceId` - Cancels the project (hard delete for unpaid drafts, `"canceled"` status update for paid).
 - `POST /:referenceId/upload-urls` - The CDN broker. Generates and returns time-limited, pre-signed Cloudflare R2 URLs for direct client-to-CDN `.webp` image uploads. Accepts an optional `locale` in the body to return localized status messages.
 - `PATCH /:referenceId` - Auto-save route. Accepts partial content payloads and an optional `locale` to update the database row. Returns a localized success message.
+- `POST /:referenceId/reschedule` - Changes the project's showcase date (if the project is in `incomplete` or `ready` state). Verifies date validity, slot limits, and deadzones. Updates both `projects.showcaseDate` and `project_ledger.lastShowcaseDate` safely via a transaction.
 - `POST /:referenceId/publish` - The final lock-in. Validates the existing database row against the strict Zod publish schema. Accepts an optional `locale` in the body. If all required content is present, flips the status to `"ready"` and returns a localized status message.
 
 ### Webhooks API (`/webhooks`)

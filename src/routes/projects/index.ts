@@ -17,6 +17,7 @@ import {
 	getSingleProjectParamsSchema,
 	patchContentSchema,
 	reserveProjectSchema,
+	rescheduleProjectSchema,
 } from "./schemas.js"
 
 export const projectRoutes: FastifyPluginAsyncZod = async (fastify) => {
@@ -164,6 +165,19 @@ export const projectRoutes: FastifyPluginAsyncZod = async (fastify) => {
 		)
 
 		privateRoutes.post("/reserve", { schema: { body: reserveProjectSchema } }, ProjectsController.reserve)
+
+		privateRoutes.post(
+			"/:referenceId/reschedule",
+			{
+				schema: {
+					params: z.object({
+						referenceId: z.string().length(DB_RULES.lengthProjectRefId + DB_RULES.prefixProjectRefId.length),
+					}),
+					body: rescheduleProjectSchema,
+				},
+			},
+			ProjectsController.reschedule,
+		)
 
 		privateRoutes.post(
 			"/:referenceId/upload-urls",
