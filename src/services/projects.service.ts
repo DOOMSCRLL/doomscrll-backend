@@ -5,7 +5,7 @@ import { nanoid } from "nanoid"
 
 import { DB_RULES } from "../config/index.js"
 import { db } from "../db/index.js"
-import { profiles, projectLedger, projects } from "../db/schema.js"
+import { profiles, projectLedger, projects, receipts } from "../db/schema.js"
 import { BUCKET_NAME, CDN_DOMAIN, r2Client } from "../lib/r2.js"
 import { publishContentSchema } from "../routes/projects/schemas.js"
 import { UrlSanitizer } from "../utils/url-sanitizer.js"
@@ -492,6 +492,100 @@ export class ProjectsService {
 			await db.update(projects).set({ status: "canceled" }).where(eq(projects.id, projectData.id))
 		} else {
 			return { error: "INVALID_STATE" as const }
+		}
+
+		return { success: true as const }
+	}
+
+	static async refundProject(referenceId: string, profileId: string) {
+		const now = new Date()
+		const utcHour = now.getUTCHours()
+		const utcDate = now.toISOString().split("T")[0]
+
+		const tomorrow = new Date(now)
+		tomorrow.setUTCDate(now.getUTCDate() + 1)
+		const utcTomorrow = tomorrow.toISOString().split("T")[0]
+
+		const [projectData] = await db
+			.select({
+				id: projects.id,
+				status: projects.status,
+				showcaseDate: projects.showcaseDate,
+				coverImagePath: projects.coverImagePath,
+				screenshotPaths: projects.screenshotPaths,
+				receiptId: receipts.id,
+				providerTransactionId: receipts.providerTransactionId,
+				receiptStatus: receipts.status,
+			})
+			.from(projects)
+			.innerJoin(projectLedger, eq(projects.ledgerId, projectLedger.id))
+			.leftJoin(receipts, eq(projects.referenceId, receipts.projectReferenceId))
+			.where(and(eq(projects.referenceId, referenceId), eq(projectLedger.profileId, profileId)))
+			.limit(1)
+
+		if (!projectData) return { error: "NOT_FOUND" as const }
+		if (projectData.status === "draft" || projectData.status === "canceled") {
+			return { error: "INVALID_STATE" as const }
+		}
+
+		if (projectData.showcaseDate <= utcDate) {
+			return {
+				error: "INVALID_PAYLOAD" as const,
+				message: "Cannot refund a project that is showcasing today or already showcased.",
+			}
+		}
+		if (projectData.showcaseDate === utcTomorrow && utcHour >= DB_RULES.hourUTCDeadzone) {
+			return {
+				error: "DEADZONE_ACTIVE" as const,
+				message: "DOOMLIT cancellations for the next day closes at 23:00. Deadzone is active",
+			}
+		}
+
+		if (!projectData.providerTransactionId || projectData.receiptStatus !== "succeeded") {
+			return { error: "INVALID_STATE" as const, message: "No successful payment found to refund." }
+		}
+
+		const apiKey = process.env.LEMONSQUEEZY_WEBHOOK_API_KEY
+		if (!apiKey) {
+			throw new ServiceError("INTERNAL_ERROR", { message: "Missing LemonSqueezy API key." })
+		}
+
+		const lsResponse = await fetch(
+			`https://api.lemonsqueezy.com/v1/orders/${projectData.providerTransactionId}/refund`,
+			{
+				method: "POST",
+				headers: {
+					Accept: "application/vnd.api+json",
+					"Content-Type": "application/vnd.api+json",
+					Authorization: `Bearer ${apiKey}`,
+				},
+			},
+		)
+
+		if (!lsResponse.ok) {
+			const errorData = await lsResponse.json().catch(() => ({}))
+			throw new ServiceError("INTERNAL_ERROR", {
+				message: "Failed to issue refund via Lemon Squeezy.",
+				details: errorData,
+			})
+		}
+
+		await db.transaction(async (tx) => {
+			await tx.update(projects).set({ status: "canceled" }).where(eq(projects.id, projectData.id))
+			if (projectData.receiptId) {
+				await tx.update(receipts).set({ status: "refunded" }).where(eq(receipts.id, projectData.receiptId))
+			}
+		})
+
+		const orphansToDelete: string[] = []
+		if (projectData.coverImagePath) orphansToDelete.push(projectData.coverImagePath)
+		if (projectData.screenshotPaths && projectData.screenshotPaths.length > 0)
+			orphansToDelete.push(...projectData.screenshotPaths)
+
+		if (orphansToDelete.length > 0) {
+			Promise.allSettled(
+				orphansToDelete.map((key) => r2Client.send(new DeleteObjectCommand({ Bucket: BUCKET_NAME, Key: key }))),
+			).catch((err) => console.error("Failed to delete orphaned CDN images upon refund:", err))
 		}
 
 		return { success: true as const }

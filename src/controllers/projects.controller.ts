@@ -290,6 +290,33 @@ export class ProjectsController {
 		}
 	}
 
+	static async refundProject(request: FastifyRequest<{ Params: { referenceId: string } }>, reply: FastifyReply) {
+		const { referenceId } = request.params
+		const profileId = request.user.id
+
+		try {
+			const result = await ProjectsService.refundProject(referenceId, profileId)
+
+			if ("error" in result) {
+				if (result.error === "NOT_FOUND") {
+					return reply.code(404).send(getErrorResponse("NOT_FOUND"))
+				} else if (result.error === "INVALID_STATE") {
+					return reply.code(400).send(getErrorResponse("INVALID_STATE", undefined, (result as any).message))
+				} else if (result.error === "INVALID_PAYLOAD") {
+					return reply.code(400).send(getErrorResponse("INVALID_PAYLOAD", undefined, (result as any).message))
+				} else if (result.error === "DEADZONE_ACTIVE") {
+					return reply.code(403).send(getErrorResponse("DEADZONE_ACTIVE", undefined, (result as any).message))
+				}
+				return reply.code(400).send(getErrorResponse(result.error as any))
+			}
+
+			return reply.code(200).send({ success: true, message: "Project successfully canceled and refunded." })
+		} catch (error) {
+			request.log.error(error)
+			return reply.code(500).send(getErrorResponse("INTERNAL_ERROR", undefined, "Failed to refund project."))
+		}
+	}
+
 	static async getSingleProject(request: FastifyRequest<{ Params: { referenceId: string } }>, reply: FastifyReply) {
 		const { referenceId } = request.params
 

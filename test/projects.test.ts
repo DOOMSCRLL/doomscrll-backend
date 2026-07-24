@@ -21,6 +21,7 @@ vi.mock("../src/services/projects.service.js", () => {
 			getRules: vi.fn(),
 			getReservationCounts: vi.fn(),
 			rescheduleProject: vi.fn(),
+			refundProject: vi.fn(),
 		},
 	}
 })
@@ -316,6 +317,34 @@ describe("Project Routes", () => {
 			method: "POST",
 			url: "/projects/ref123456789/reschedule",
 			payload: { newDate: "2099-12-31" },
+		})
+		expect(res.statusCode).toBe(403)
+	})
+
+	it("should refund project successfully", async () => {
+		vi.mocked(ProjectsService.refundProject).mockResolvedValue({ success: true } as any)
+		const res = await fastify.inject({
+			method: "POST",
+			url: "/projects/ref123456789/refund",
+		})
+		expect(res.statusCode).toBe(200)
+		expect(res.json().success).toBe(true)
+	})
+
+	it("should fail to refund project if unauthorized or not found", async () => {
+		vi.mocked(ProjectsService.refundProject).mockResolvedValue({ error: "NOT_FOUND" } as any)
+		const res = await fastify.inject({
+			method: "POST",
+			url: "/projects/ref123456789/refund",
+		})
+		expect(res.statusCode).toBe(404)
+	})
+
+	it("should fail to refund project if deadzone is active", async () => {
+		vi.mocked(ProjectsService.refundProject).mockResolvedValue({ error: "DEADZONE_ACTIVE" } as any)
+		const res = await fastify.inject({
+			method: "POST",
+			url: "/projects/ref123456789/refund",
 		})
 		expect(res.statusCode).toBe(403)
 	})
