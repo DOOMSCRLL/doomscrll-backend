@@ -69,7 +69,7 @@ dist
 # Environment Vars
 .env
 .env.*
-!.env.*
+.env.server
 
 # Drizzle
 /drizzle
