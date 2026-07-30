@@ -11,6 +11,8 @@
 		"test:watch": "vitest",
 		"coverage": "vitest run --coverage",
 		"start": "npm run build:ts && fastify start -l info dist/app.js",
+		"build": "npm run build:ts",
+		"start:prod": "fastify start -l info -a 0.0.0.0 dist/app.js",
 		"build:ts": "tsc && npm run type-check && npm run lint",
 		"watch:ts": "tsc -w",
 		"dev": "npm run build:ts && concurrently -k -p \"[{name}]\" -n \"TypeScript,App\" -c \"yellow.bold,cyan.bold\" \"npm:watch:ts\" \"npm:dev:start\"",
