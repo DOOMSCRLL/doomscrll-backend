@@ -62,6 +62,7 @@ const app: FastifyPluginAsync<AppOptions> = async (fastify, opts): Promise<void>
 			const allowedOrigins = [
 				"https://doomlit.doomscrll.com", // DOOMLIT reservation app
 				"https://doomscrll.com", // Landing page
+				"https://www.doomscrll.com",
 			]
 
 			if (allowedOrigins.includes(origin)) {

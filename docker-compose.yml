@@ -27,8 +27,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    ports:
-      - "127.0.0.1:3000:3000"
+    expose:
+      - "3000"
     environment:
       - NODE_ENV=production
       - DATABASE_URL=postgres://${DB_USER}:${DB_PASSWORD}@db:5432/${DB_NAME}
@@ -38,9 +38,32 @@ services:
     networks:
       - internal_net
 
+  proxy:
+    image: caddy:2-alpine
+    container_name: doomscrll_proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      - DOMAIN=${DOMAIN:-api.doomscrll.com}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - api
+    networks:
+      - internal_net
+
 volumes:
   pgdata:
     name: doomscrll_pgdata
+  caddy_data:
+    name: doomscrll_caddy_data
+  caddy_config:
+    name: doomscrll_caddy_config
 
 networks:
   internal_net:

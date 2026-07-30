@@ -1,0 +1,4 @@
+{$DOMAIN:api.doomscrll.com} {
+	reverse_proxy api:3000
+	encode gzip zstd
+}
