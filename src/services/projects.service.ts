@@ -642,6 +642,22 @@ export class ProjectsService {
 		}
 	}
 
+	static async getProjectsPerCategory(date: string) {
+		const rawCounts = await db
+			.select({
+				category: projects.category,
+				count: count(),
+			})
+			.from(projects)
+			.where(and(eq(projects.showcaseDate, date), eq(projects.status, "ready")))
+			.groupBy(projects.category)
+
+		return rawCounts.map((row) => ({
+			category: row.category,
+			count: Number(row.count),
+		}))
+	}
+
 	static async getReservationCounts(year?: number, month?: number) {
 		const now = new Date()
 		const targetYear = year ?? now.getUTCFullYear()

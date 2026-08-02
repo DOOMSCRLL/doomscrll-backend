@@ -19,6 +19,7 @@ vi.mock("../src/services/projects.service.js", () => {
 			getDraft: vi.fn(),
 			cancelProject: vi.fn(),
 			getRules: vi.fn(),
+			getProjectsPerCategory: vi.fn(),
 			getReservationCounts: vi.fn(),
 			rescheduleProject: vi.fn(),
 			refundProject: vi.fn(),
@@ -230,6 +231,24 @@ describe("Project Routes", () => {
 		const res = await fastify.inject({ method: "GET", url: "/projects?page=1&batchSize=10" })
 		expect(res.statusCode).toBe(200)
 		expect(res.json().data.length).toBe(1)
+	})
+
+	it("should get projects per category count", async () => {
+		vi.mocked(ProjectsService.getProjectsPerCategory).mockResolvedValue([
+			{ category: "Video Games", count: 5 },
+			{ category: "Software & Tools", count: 2 },
+		] as any)
+
+		const res = await fastify.inject({
+			method: "GET",
+			url: "/projects/projects-per-category?date=2026-08-02",
+		})
+		expect(res.statusCode).toBe(200)
+		expect(res.json().data).toEqual([
+			{ category: "Video Games", count: 5 },
+			{ category: "Software & Tools", count: 2 },
+		])
+		expect(ProjectsService.getProjectsPerCategory).toHaveBeenCalledWith("2026-08-02")
 	})
 
 	it("should get reservation counts", async () => {

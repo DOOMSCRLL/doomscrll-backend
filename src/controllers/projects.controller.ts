@@ -1,7 +1,11 @@
 import { FastifyReply, FastifyRequest } from "fastify"
 import { getErrorResponse } from "../config/errors.js"
 import { getDictionaryFor } from "../config/locales/index.js"
-import { GetProjectPreviewQuery, GetReservationCountsQuery } from "../routes/projects/schemas.js"
+import {
+	GetProjectPreviewQuery,
+	GetProjectsPerCategoryQuery,
+	GetReservationCountsQuery,
+} from "../routes/projects/schemas.js"
 import { ProjectsService } from "../services/projects.service.js"
 
 export class ProjectsController {
@@ -345,6 +349,23 @@ export class ProjectsController {
 		} catch (error) {
 			request.log.error(error)
 			return reply.code(500).send(getErrorResponse("INTERNAL_ERROR", undefined, "Failed to fetch project rules."))
+		}
+	}
+
+	static async getProjectsPerCategory(
+		request: FastifyRequest<{ Querystring: GetProjectsPerCategoryQuery }>,
+		reply: FastifyReply,
+	) {
+		const { date } = request.query
+
+		try {
+			const result = await ProjectsService.getProjectsPerCategory(date)
+			return reply.code(200).send({ success: true, data: result })
+		} catch (error) {
+			request.log.error(error)
+			return reply
+				.code(500)
+				.send(getErrorResponse("INTERNAL_ERROR", undefined, "Failed to fetch project counts per category."))
 		}
 	}
 

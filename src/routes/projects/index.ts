@@ -12,6 +12,8 @@ import {
 	getFullProjectResponseSchema,
 	getDraftResponseSchema,
 	getProjectRulesResponseSchema,
+	getProjectsPerCategoryQuerySchema,
+	getProjectsPerCategoryResponseSchema,
 	getReservationCountsQuerySchema,
 	getReservationCountsResponseSchema,
 	getSingleProjectParamsSchema,
@@ -42,6 +44,22 @@ export const projectRoutes: FastifyPluginAsyncZod = async (fastify) => {
 				config: { rateLimit: { max: 60, timeWindow: "1 minute" } },
 			},
 			ProjectsController.getProjectPreviews,
+		)
+
+		publicRoutes.get(
+			"/projects-per-category",
+			{
+				schema: {
+					querystring: getProjectsPerCategoryQuerySchema,
+					response: {
+						200: getProjectsPerCategoryResponseSchema,
+						400: apiErrorResponseSchema,
+						500: apiErrorResponseSchema,
+					},
+				},
+				config: { rateLimit: { max: 60, timeWindow: "1 minute" } },
+			},
+			ProjectsController.getProjectsPerCategory,
 		)
 
 		publicRoutes.get(

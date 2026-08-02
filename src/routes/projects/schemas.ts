@@ -174,6 +174,21 @@ export const getDraftResponseSchema = z.object({
 	}),
 })
 
+export const getProjectsPerCategoryQuerySchema = z.object({
+	date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Date must be strictly YYYY-MM-DD to prevent timezone shifting"),
+})
+
+export const getProjectsPerCategoryResponseSchema = z.object({
+	success: z.boolean(),
+	data: z.array(
+		z.object({
+			category: z.string(),
+			count: z.number().int(),
+		}),
+	),
+})
+export type GetProjectsPerCategoryQuery = z.infer<typeof getProjectsPerCategoryQuerySchema>
+
 export const getReservationCountsQuerySchema = z.object({
 	year: z.coerce.number().int().min(2026).optional(),
 	month: z.coerce.number().int().min(1).max(12).optional(),
