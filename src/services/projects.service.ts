@@ -643,6 +643,15 @@ export class ProjectsService {
 	}
 
 	static async getProjectsPerCategory(date: string) {
+		const [total] = await db
+			.select({ total: count() })
+			.from(projects)
+			.where(and(eq(projects.showcaseDate, date), eq(projects.status, "ready")))
+
+		if (!total || Number(total.total) === 0) {
+			return []
+		}
+
 		const rawCounts = await db
 			.select({
 				category: projects.category,
@@ -652,10 +661,12 @@ export class ProjectsService {
 			.where(and(eq(projects.showcaseDate, date), eq(projects.status, "ready")))
 			.groupBy(projects.category)
 
-		return rawCounts.map((row) => ({
-			category: row.category,
-			count: Number(row.count),
-		}))
+		return rawCounts
+			.filter((row) => Number(row.count) > 0)
+			.map((row) => ({
+				category: row.category,
+				count: Number(row.count),
+			}))
 	}
 
 	static async getReservationCounts(year?: number, month?: number) {

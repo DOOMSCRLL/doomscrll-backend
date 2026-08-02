@@ -181,7 +181,7 @@ All backend endpoints format their errors consistently. When `success === false`
 
 - `GET /rules` - Exposes backend configuration constants (e.g., daily slot limits, deadzones, cooldown periods, max tag count, max screenshot count, file size limits, max length rules) to dynamically synchronize the frontend UI components.
 - `GET /reservation-counts` - Query `{ year?, month? }`. Returns an optimized key-value map of active reservation counts per day for a given month and year, enabling the frontend calendar to instantly render slot availability.
-- `GET /projects-per-category` - Query `{ date }`. Returns an array of active showcased project counts grouped by category (`Array<{ category: string, count: number }>`) for a specific date (`YYYY-MM-DD`).
+- `GET /projects-per-category` - Query `{ date }`. Returns an array of active showcased project counts grouped by category (`Array<{ category: string, count: number }>`) for a specific date (`YYYY-MM-DD`). Explicitly verifies total showcased items for the date and returns an empty array `[]` when no projects exist.
 - `GET /` - Fetches a batched feed of today's active DOOMLITs (`status = 'ready'`). Supports dynamic filtering (`category`, `tag`, and deep JSONB search for `platform`).
 - `GET /preview` - Query `{ date, category }`. Returns a limited preview (name, category, tags, author) of future DOOMLITs. Fails with a 400 if requested date is in the past.
 - `GET /:referenceId` - Fetches full details of a specific DOOMLIT for deep linking. Only functions on the active showcase day (`todayUtc`).
