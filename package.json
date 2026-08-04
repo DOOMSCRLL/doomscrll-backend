@@ -25,6 +25,7 @@
 		"db:seed:projects": "node --loader ts-node/esm src/scripts/seed-projects.ts",
 		"db:clear:projects": "node --loader ts-node/esm src/scripts/clear-projects.ts",
 		"db:seed:games-tomorrow": "node --loader ts-node/esm src/scripts/seed-games-tomorrow.ts",
+		"db:seed:mock": "node --loader ts-node/esm src/scripts/seed-mock.ts",
 		"tunnel": "zrok share reserved doomscrllbackenddev --override-endpoint http://localhost:3000"
 	},
 	"dependencies": {
