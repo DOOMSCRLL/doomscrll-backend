@@ -129,7 +129,7 @@ export const getFullProjectResponseSchema = z.object({
 // #region Audience-related public requests
 export const getProjectFeedQuerySchema = z.object({
 	page: z.coerce.number().int().min(1).default(1),
-	batchSize: z.coerce.number().int().min(1).max(16).default(8),
+	batchSize: z.coerce.number().int().min(1).max(40).default(8),
 	category: z.string().optional(),
 	platform: z.string().optional(),
 	tag: tagRule.optional(),

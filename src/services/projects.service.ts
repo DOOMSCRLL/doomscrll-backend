@@ -337,6 +337,15 @@ export class ProjectsService {
 		// Simplified pagination: ordered directly by ID for consistent cursor paging.
 		const orderByClause = projects.id
 
+		let queryCount: number | undefined = undefined
+		if (tag || platform) {
+			const countResult = await db
+				.select({ count: sql<number>`count(*)` })
+				.from(projects)
+				.where(and(...conditions))
+			queryCount = Number(countResult[0].count)
+		}
+
 		const feed = await db
 			.select({
 				referenceId: projects.referenceId,
@@ -354,7 +363,7 @@ export class ProjectsService {
 			.limit(batchSize)
 			.offset(offset)
 
-		return feed
+		return { feed, queryCount }
 	}
 
 	static async getProjectPreviews(date: string, category: string) {

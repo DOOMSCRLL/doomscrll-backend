@@ -181,8 +181,8 @@ export class ProjectsController {
 
 	static async getProjectFeed(request: FastifyRequest<{ Querystring: any }>, reply: FastifyReply) {
 		try {
-			const feed = await ProjectsService.getProjectFeed(request.query)
-			return reply.code(200).send({ success: true, data: feed })
+			const { feed, queryCount } = await ProjectsService.getProjectFeed(request.query)
+			return reply.code(200).send({ success: true, data: feed, queryCount })
 		} catch (error) {
 			request.log.error(error)
 			return reply.code(500).send(getErrorResponse("INTERNAL_ERROR", undefined, "Failed to fetch daily DOOMLIT feed."))
