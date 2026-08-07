@@ -224,9 +224,9 @@ describe("Project Routes", () => {
 	})
 
 	it("should get project feed", async () => {
-		vi.mocked(ProjectsService.getProjectFeed).mockResolvedValue([
-			{ referenceId: "ref1", name: "Project 1", creator: { username: "user1" } },
-		] as any)
+		vi.mocked(ProjectsService.getProjectFeed).mockResolvedValue({
+			feed: [{ referenceId: "ref1", name: "Project 1", creator: { username: "user1" } }],
+		} as any)
 
 		const res = await fastify.inject({ method: "GET", url: "/projects?page=1&batchSize=10" })
 		expect(res.statusCode).toBe(200)
