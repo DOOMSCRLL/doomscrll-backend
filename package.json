@@ -1,7 +1,7 @@
 {
 	"name": "doomscrll-backend",
 	"private": true,
-	"version": "0.2.0",
+	"version": "0.2.1",
 	"author": "Yakup Murat ÇAYLAK",
 	"description": "Backend for the DOOMSCRLL project.",
 	"main": "app.ts",
@@ -22,10 +22,7 @@
 		"lint:fix": "eslint src/**/*.ts --fix",
 		"type-check": "tsc --noEmit",
 		"db:seed": "node --loader ts-node/esm src/scripts/seed.ts",
-		"db:seed:projects": "node --loader ts-node/esm src/scripts/seed-projects.ts",
 		"db:clear:projects": "node --loader ts-node/esm src/scripts/clear-projects.ts",
-		"db:seed:games-tomorrow": "node --loader ts-node/esm src/scripts/seed-games-tomorrow.ts",
-		"db:seed:mock": "node --loader ts-node/esm src/scripts/seed-mock.ts",
 		"tunnel": "zrok share reserved doomscrllbackenddev --override-endpoint http://localhost:3000"
 	},
 	"dependencies": {
