@@ -30,7 +30,7 @@ const SCREENSHOT_IMAGES = [
 	"https://images.unsplash.com/photo-1579099816874-e02eaf257e2a",
 ]
 
-type PlatformDefinition = {
+interface PlatformDefinition {
 	platform: string
 	getUrl: (slug: string, id: number) => string
 }
@@ -47,12 +47,12 @@ const CATEGORY_DATA: Record<
 	"Video Games": {
 		platforms: [
 			{ platform: "steam", getUrl: (_slug, id) => `https://store.steampowered.com/app/${100000 + id}` },
-			{ platform: "itchio", getUrl: (slug) => `https://${slug}.itch.io/game` },
-			{ platform: "gog", getUrl: (slug) => `https://www.gog.com/en/game/${slug}` },
-			{ platform: "epicGames", getUrl: (slug) => `https://store.epicgames.com/p/${slug}` },
-			{ platform: "playstation", getUrl: (slug) => `https://store.playstation.com/concept/${slug}` },
+			{ platform: "itchio", getUrl: (slug, id) => `https://${slug}-${id}.itch.io/game` },
+			{ platform: "gog", getUrl: (slug, id) => `https://www.gog.com/en/game/${slug}-${id}` },
+			{ platform: "epicGames", getUrl: (slug, id) => `https://store.epicgames.com/p/${slug}-${id}` },
+			{ platform: "playstation", getUrl: (slug, id) => `https://store.playstation.com/concept/${slug}-${id}` },
 			{ platform: "xbox", getUrl: (slug, id) => `https://www.xbox.com/games/store/${slug}/${id}` },
-			{ platform: "switch", getUrl: (slug) => `https://www.nintendo.com/us/store/products/${slug}-switch` },
+			{ platform: "switch", getUrl: (slug, id) => `https://www.nintendo.com/us/store/products/${slug}-${id}-switch` },
 		],
 		tags: [
 			"#action",
@@ -114,9 +114,9 @@ const CATEGORY_DATA: Record<
 	Tabletop: {
 		platforms: [
 			{ platform: "driveThru", getUrl: (_slug, id) => `https://www.drivethrurpg.com/product/${200000 + id}` },
-			{ platform: "gameCrafter", getUrl: (slug) => `https://www.thegamecrafter.com/games/${slug}` },
+			{ platform: "gameCrafter", getUrl: (slug, id) => `https://www.thegamecrafter.com/games/${slug}-${id}` },
 			{ platform: "amazon", getUrl: (_slug, id) => `https://www.amazon.com/dp/B0${id}00000` },
-			{ platform: "itchio", getUrl: (slug) => `https://${slug}.itch.io/tabletop` },
+			{ platform: "itchio", getUrl: (slug, id) => `https://${slug}-${id}.itch.io/tabletop` },
 		],
 		tags: ["#strategy", "#co-op", "#fantasy", "#adventure", "#party", "#social-deduction", "#mythology", "#medieval"],
 		features: [
@@ -145,14 +145,14 @@ const CATEGORY_DATA: Record<
 	},
 	"Software & Tools": {
 		platforms: [
-			{ platform: "github", getUrl: (slug) => `https://github.com/doomscrll/${slug}` },
-			{ platform: "gitlab", getUrl: (slug) => `https://gitlab.com/doomscrll/${slug}` },
-			{ platform: "productHunt", getUrl: (slug) => `https://www.producthunt.com/posts/${slug}` },
-			{ platform: "fdroid", getUrl: (slug) => `https://f-droid.org/packages/com.doomscrll.${slug}` },
+			{ platform: "github", getUrl: (slug, id) => `https://github.com/doomscrll/${slug}-${id}` },
+			{ platform: "gitlab", getUrl: (slug, id) => `https://gitlab.com/doomscrll/${slug}-${id}` },
+			{ platform: "productHunt", getUrl: (slug, id) => `https://www.producthunt.com/posts/${slug}-${id}` },
+			{ platform: "fdroid", getUrl: (slug, id) => `https://f-droid.org/packages/com.doomscrll.${slug}.${id}` },
 			{ platform: "appStore", getUrl: (_slug, id) => `https://apps.apple.com/app/id${300000 + id}` },
 			{
 				platform: "playStore",
-				getUrl: (slug) => `https://play.google.com/store/apps/details?id=com.doomscrll.${slug}`,
+				getUrl: (slug, id) => `https://play.google.com/store/apps/details?id=com.doomscrll.${slug}.${id}`,
 			},
 		],
 		tags: ["#tool", "#open-source", "#automation", "#sandbox", "#building", "#sci-fi"],
@@ -182,16 +182,16 @@ const CATEGORY_DATA: Record<
 	},
 	"Digital Assets": {
 		platforms: [
-			{ platform: "fab", getUrl: (slug) => `https://www.fab.com/listings/${slug}` },
-			{ platform: "gumroad", getUrl: (slug) => `https://gumroad.com/l/${slug}` },
-			{ platform: "artstation", getUrl: (slug) => `https://www.artstation.com/marketplace/p/${slug}` },
+			{ platform: "fab", getUrl: (slug, id) => `https://www.fab.com/listings/${slug}-${id}` },
+			{ platform: "gumroad", getUrl: (slug, id) => `https://gumroad.com/l/${slug}-${id}` },
+			{ platform: "artstation", getUrl: (slug, id) => `https://www.artstation.com/marketplace/p/${slug}-${id}` },
 			{
 				platform: "unityAssetStore",
 				getUrl: (_slug, id) => `https://assetstore.unity.com/packages/slug-${400000 + id}`,
 			},
-			{ platform: "figma", getUrl: (slug) => `https://www.figma.com/community/file/${slug}` },
-			{ platform: "sketchfab", getUrl: (slug) => `https://sketchfab.com/3d-models/${slug}` },
-			{ platform: "itchio", getUrl: (slug) => `https://${slug}.itch.io/assets` },
+			{ platform: "figma", getUrl: (slug, id) => `https://www.figma.com/community/file/${slug}-${id}` },
+			{ platform: "sketchfab", getUrl: (slug, id) => `https://sketchfab.com/3d-models/${slug}-${id}` },
+			{ platform: "itchio", getUrl: (slug, id) => `https://${slug}-${id}.itch.io/assets` },
 		],
 		tags: ["#pixel-art", "#cozy", "#sci-fi", "#cyberpunk", "#fantasy", "#building", "#space"],
 		features: [
@@ -222,7 +222,7 @@ const CATEGORY_DATA: Record<
 				platform: "googlePlayBooks",
 				getUrl: (_slug, id) => `https://play.google.com/store/books/details?id=book_${id}`,
 			},
-			{ platform: "audible", getUrl: (slug) => `https://www.audible.com/pd/${slug}-audiobook` },
+			{ platform: "audible", getUrl: (slug, id) => `https://www.audible.com/pd/${slug}-${id}-audiobook` },
 			{ platform: "amazon", getUrl: (_slug, id) => `https://www.amazon.com/dp/B0${id}11111` },
 		],
 		tags: ["#story-rich", "#interactive-fiction", "#fantasy", "#sci-fi", "#mystery", "#detective", "#historical"],
@@ -247,9 +247,9 @@ const CATEGORY_DATA: Record<
 	},
 	Audio: {
 		platforms: [
-			{ platform: "bandcamp", getUrl: (slug) => `https://${slug}.bandcamp.com/album/soundtrack` },
+			{ platform: "bandcamp", getUrl: (slug, id) => `https://${slug}-${id}.bandcamp.com/album/soundtrack` },
 			{ platform: "spotify", getUrl: (_slug, id) => `https://open.spotify.com/album/${id}abc` },
-			{ platform: "soundcloud", getUrl: (slug) => `https://soundcloud.com/creators/${slug}` },
+			{ platform: "soundcloud", getUrl: (slug, id) => `https://soundcloud.com/creators/${slug}-${id}` },
 			{ platform: "appleMusic", getUrl: (_slug, id) => `https://music.apple.com/us/album/${id}` },
 		],
 		tags: ["#soundtrack", "#ambient", "#chiptune", "#synthwave", "#lofi"],
@@ -260,7 +260,7 @@ const CATEGORY_DATA: Record<
 		platforms: [
 			{ platform: "youtube", getUrl: (_slug, id) => `https://www.youtube.com/watch?v=vid_${id}` },
 			{ platform: "vimeo", getUrl: (_slug, id) => `https://vimeo.com/${600000 + id}` },
-			{ platform: "nebula", getUrl: (slug) => `https://nebula.tv/videos/${slug}` },
+			{ platform: "nebula", getUrl: (slug, id) => `https://nebula.tv/videos/${slug}-${id}` },
 		],
 		tags: ["#documentary", "#devlog", "#animation", "#tutorial"],
 		features: ["4K Resolution", "Subtitles Included", "Behind the Scenes", "Director Commentary"],
@@ -269,31 +269,31 @@ const CATEGORY_DATA: Record<
 	Goods: {
 		platforms: [
 			{ platform: "etsy", getUrl: (_slug, id) => `https://www.etsy.com/listing/${700000 + id}` },
-			{ platform: "bigCartel", getUrl: (slug) => `https://${slug}.bigcartel.com/product/item` },
-			{ platform: "redBubble", getUrl: (slug) => `https://www.redbubble.com/i/sticker/${slug}` },
+			{ platform: "bigCartel", getUrl: (slug, id) => `https://${slug}-${id}.bigcartel.com/product/item` },
+			{ platform: "redBubble", getUrl: (slug, id) => `https://www.redbubble.com/i/sticker/${slug}-${id}` },
 		],
 		tags: ["#merch", "#craft", "#pin", "#apparel", "#sticker"],
 		features: ["Worldwide Shipping", "Handcrafted", "Limited Edition", "Eco Friendly Packaging"],
 		titles: ["Enamel Boss Pin Set", "Retro Arcade Hoodie", "Pixel Heart Vinyl Sticker Pack"],
 	},
 	Food: {
-		platforms: [{ platform: "web", getUrl: (slug) => `https://${slug}.food.example.com` }],
+		platforms: [{ platform: "web", getUrl: (slug, id) => `https://${slug}-${id}.food.example.com` }],
 		tags: ["#craft-snack", "#beverage", "#artisan"],
 		features: ["Organic Ingredients", "Vegan Option"],
 		titles: ["Health Potion Energy Drink", "Pixel Cookie Box"],
 	},
 	Local: {
-		platforms: [{ platform: "web", getUrl: (slug) => `https://${slug}.local.example.com` }],
+		platforms: [{ platform: "web", getUrl: (slug, id) => `https://${slug}-${id}.local.example.com` }],
 		tags: ["#arcade", "#meetup", "#event"],
 		features: ["Wheelchair Accessible", "Free Entry"],
 		titles: ["Indie Arcade Night", "Retro Game Jam Meetup"],
 	},
 	Internal_Socials: {
 		platforms: [
-			{ platform: "discord", getUrl: (slug) => `https://discord.gg/${slug}` },
-			{ platform: "bsky", getUrl: (slug) => `https://bsky.app/profile/${slug}.bsky.social` },
-			{ platform: "twitter", getUrl: (slug) => `https://x.com/${slug}` },
-			{ platform: "youtube", getUrl: (slug) => `https://www.youtube.com/@${slug}` },
+			{ platform: "discord", getUrl: (slug, id) => `https://discord.gg/${slug}-${id}` },
+			{ platform: "bsky", getUrl: (slug, id) => `https://bsky.app/profile/${slug}-${id}.bsky.social` },
+			{ platform: "twitter", getUrl: (slug, id) => `https://x.com/${slug}-${id}` },
+			{ platform: "youtube", getUrl: (slug, id) => `https://www.youtube.com/@${slug}-${id}` },
 		],
 		tags: ["#community", "#social"],
 		features: ["Official Channel"],
@@ -301,9 +301,9 @@ const CATEGORY_DATA: Record<
 	},
 	Internal_Crowdfunding: {
 		platforms: [
-			{ platform: "kickstarter", getUrl: (slug) => `https://www.kickstarter.com/projects/doomscrll/${slug}` },
-			{ platform: "indiegogo", getUrl: (slug) => `https://www.indiegogo.com/projects/${slug}` },
-			{ platform: "backerkit", getUrl: (slug) => `https://www.backerkit.com/c/projects/doomscrll/${slug}` },
+			{ platform: "kickstarter", getUrl: (slug, id) => `https://www.kickstarter.com/projects/doomscrll/${slug}-${id}` },
+			{ platform: "indiegogo", getUrl: (slug, id) => `https://www.indiegogo.com/projects/${slug}-${id}` },
+			{ platform: "backerkit", getUrl: (slug, id) => `https://www.backerkit.com/c/projects/doomscrll/${slug}-${id}` },
 		],
 		tags: ["#crowdfunding", "#campaign"],
 		features: ["Physical Rewards", "Early Backer Tiers"],
