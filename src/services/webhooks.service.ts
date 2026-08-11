@@ -13,8 +13,9 @@ export class WebhooksService {
 		}
 
 		const isTestMode = payload?.meta?.test_mode === true
+		const allowTestWebhooks = process.env.ALLOW_TEST_MODE_WEBHOOKS === "true"
 
-		if (process.env.NODE_ENV === "production" && isTestMode) {
+		if (process.env.NODE_ENV === "production" && isTestMode && !allowTestWebhooks) {
 			return { success: true as const, message: "Ignored test mode webhook in production" }
 		}
 
