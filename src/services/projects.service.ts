@@ -73,7 +73,14 @@ export class ProjectsService {
 				})
 
 				if (ledgerEntry) {
-					if (ledgerEntry.lastShowcaseDate) {
+					const activeProject = await tx.query.projects.findFirst({
+						where: and(eq(projects.ledgerId, ledgerEntry.id), ne(projects.status, "canceled")),
+					})
+
+					if (!activeProject) {
+						await tx.delete(projectLedger).where(eq(projectLedger.id, ledgerEntry.id))
+						ledgerEntry = undefined
+					} else if (ledgerEntry.lastShowcaseDate) {
 						const lastDate = new Date(ledgerEntry.lastShowcaseDate)
 						const targetDate = new Date(payload.showcaseDate)
 						const daysDiff = (targetDate.getTime() - lastDate.getTime()) / (1000 * 3600 * 24)
@@ -88,7 +95,9 @@ export class ProjectsService {
 							message: "This URL is currently being reserved by another user.",
 						})
 					}
-				} else {
+				}
+
+				if (!ledgerEntry) {
 					const [newLedger] = await tx
 						.insert(projectLedger)
 						.values({
