@@ -24,12 +24,13 @@ export class AuthService {
 			console.log(`****************\n`)
 		} else {
 			const plunkApiKey = process.env.PLUNK_API_KEY || ""
-			const plunk = new Plunk(plunkApiKey)
+			const plunk = new Plunk(plunkApiKey, { baseUrl: "https://next-api.useplunk.com/v1/" })
 			try {
 				await plunk.emails.send({
 					to: email,
 					subject: "Your DOOMSCRLL login code",
 					body: `<h1>Welcome to DOOMSCRLL</h1><p>Your secure sign-in code is: <strong>${plainOtp}</strong>.</p><p>This code expires in 10 minutes.</p>`,
+					from: "hello@doomscrll.com",
 				})
 			} catch (err) {
 				const maskedKey = plunkApiKey ? `${plunkApiKey.substring(0, 7)}...` : "NONE"
