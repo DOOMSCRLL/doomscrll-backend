@@ -23,6 +23,7 @@ vi.mock("../src/services/projects.service.js", () => {
 			getReservationCounts: vi.fn(),
 			rescheduleProject: vi.fn(),
 			refundProject: vi.fn(),
+			claimFreeProject: vi.fn(),
 		},
 	}
 })
@@ -366,5 +367,31 @@ describe("Project Routes", () => {
 			url: "/projects/ref123456789/refund",
 		})
 		expect(res.statusCode).toBe(403)
+	})
+
+	it("should claim free slot successfully", async () => {
+		vi.mocked(ProjectsService.claimFreeProject).mockResolvedValue({
+			success: true,
+			message: "Free launch slot claimed successfully!",
+		} as any)
+		const res = await fastify.inject({
+			method: "POST",
+			url: "/projects/P-1234567890/claim-free",
+		})
+		expect(res.statusCode).toBe(200)
+		expect(res.json().success).toBe(true)
+	})
+
+	it("should return 400 when free launch offer has expired", async () => {
+		vi.mocked(ProjectsService.claimFreeProject).mockResolvedValue({
+			error: "OFFER_EXPIRED",
+			message: "Free launch week offer has expired. Payment is required.",
+		} as any)
+		const res = await fastify.inject({
+			method: "POST",
+			url: "/projects/P-1234567890/claim-free",
+		})
+		expect(res.statusCode).toBe(400)
+		expect(res.json().error.code).toBe("OFFER_EXPIRED")
 	})
 })

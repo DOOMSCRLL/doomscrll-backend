@@ -17,6 +17,7 @@ export const ERROR_MAP = {
 	MALFORMED_JSON: "Malformed JSON body.",
 	MISSING_REFERENCE_ID: "Missing project reference ID in payload.",
 	INVALID_URL: "The provided URL does not exist or the product is not published yet.",
+	OFFER_EXPIRED: "Free launch week offer has expired. Payment is required.",
 } as const
 
 export type ErrorCode = keyof typeof ERROR_MAP

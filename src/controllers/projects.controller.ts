@@ -50,6 +50,31 @@ export class ProjectsController {
 		}
 	}
 
+	static async claimFree(request: FastifyRequest<{ Params: { referenceId: string } }>, reply: FastifyReply) {
+		const profileId = request.user.id
+		const { referenceId } = request.params
+
+		try {
+			const result = await ProjectsService.claimFreeProject(referenceId, profileId)
+
+			if ("error" in result) {
+				if (result.error === "OFFER_EXPIRED") {
+					return reply.code(400).send(getErrorResponse("OFFER_EXPIRED", undefined, result.message))
+				} else if (result.error === "NOT_FOUND") {
+					return reply.code(404).send(getErrorResponse("NOT_FOUND", undefined, result.message))
+				} else if (result.error === "INVALID_STATE") {
+					return reply.code(400).send(getErrorResponse("INVALID_STATE", undefined, result.message))
+				}
+				return reply.code(400).send(getErrorResponse("INVALID_PAYLOAD", undefined, (result as any).message))
+			}
+
+			return reply.code(200).send(result)
+		} catch (error) {
+			request.log.error(error)
+			return reply.code(500).send(getErrorResponse("INTERNAL_ERROR", undefined, "Failed to claim free DOOMLIT slot."))
+		}
+	}
+
 	static async reschedule(
 		request: FastifyRequest<{ Params: { referenceId: string }; Body: { newDate: string } }>,
 		reply: FastifyReply,

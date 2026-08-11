@@ -202,6 +202,25 @@ export const projectRoutes: FastifyPluginAsyncZod = async (fastify) => {
 		privateRoutes.post("/reserve", { schema: { body: reserveProjectSchema } }, ProjectsController.reserve)
 
 		privateRoutes.post(
+			"/:referenceId/claim-free",
+			{
+				schema: {
+					params: z.object({
+						referenceId: z.string().length(DB_RULES.lengthProjectRefId + DB_RULES.prefixProjectRefId.length),
+					}),
+					response: {
+						200: z.object({ success: z.boolean(), message: z.string() }),
+						400: apiErrorResponseSchema,
+						403: apiErrorResponseSchema,
+						404: apiErrorResponseSchema,
+						500: apiErrorResponseSchema,
+					},
+				},
+			},
+			ProjectsController.claimFree,
+		)
+
+		privateRoutes.post(
 			"/:referenceId/reschedule",
 			{
 				schema: {

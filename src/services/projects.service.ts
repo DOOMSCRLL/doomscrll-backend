@@ -124,6 +124,43 @@ export class ProjectsService {
 		}
 	}
 
+	static async claimFreeProject(referenceId: string, profileId: string) {
+		const freeLaunchEndDate = process.env.FREE_LAUNCH_END_DATE || "2026-08-31"
+		const nowIso = new Date().toISOString().split("T")[0]
+
+		if (nowIso > freeLaunchEndDate) {
+			return { error: "OFFER_EXPIRED" as const, message: "Free launch week offer has expired. Payment is required." }
+		}
+
+		return await db.transaction(async (tx) => {
+			const [data] = await tx
+				.select({
+					project: projects,
+					ledger: projectLedger,
+				})
+				.from(projects)
+				.innerJoin(projectLedger, eq(projects.ledgerId, projectLedger.id))
+				.where(and(eq(projects.referenceId, referenceId), eq(projectLedger.profileId, profileId)))
+
+			if (!data) {
+				return { error: "NOT_FOUND" as const, message: "Project reservation not found or unauthorized." }
+			}
+
+			if (data.project.status !== "draft") {
+				return { error: "INVALID_STATE" as const, message: "Only draft DOOMLIT projects can claim free launch slots." }
+			}
+
+			await tx.update(projects).set({ status: "incomplete" }).where(eq(projects.id, data.project.id))
+
+			await tx
+				.update(projectLedger)
+				.set({ lastShowcaseDate: data.project.showcaseDate })
+				.where(eq(projectLedger.id, data.ledger.id))
+
+			return { success: true as const, message: "Free launch slot claimed successfully!" }
+		})
+	}
+
 	static async rescheduleProject(referenceId: string, newDate: string, profileId: string) {
 		const now = new Date()
 		const utcHour = now.getUTCHours()
