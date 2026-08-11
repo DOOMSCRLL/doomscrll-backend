@@ -671,6 +671,9 @@ export class ProjectsService {
 	}
 
 	static getRules() {
+		const freeLaunchEndDate = process.env.FREE_LAUNCH_END_DATE || "2026-08-31"
+		const nowIso = new Date().toISOString().split("T")[0]
+
 		return {
 			maxReservationsPerDay: DB_RULES.limitDailySlots,
 			cooldownPeriodDays: DB_RULES.durationProjectCooldown,
@@ -685,6 +688,8 @@ export class ProjectsService {
 			maxImageFileSizeMB: DB_RULES.maxSizeUploadedImage,
 			maxLengthProjectName: DB_RULES.maxLengthProjectTitle,
 			maxLengthProjectDescription: DB_RULES.maxLengthProjectDescription,
+			freeLaunchEndDate,
+			isFreeLaunchActive: nowIso <= freeLaunchEndDate,
 		}
 	}
 

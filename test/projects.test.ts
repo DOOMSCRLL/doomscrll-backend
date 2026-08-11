@@ -62,6 +62,8 @@ describe("Project Routes", () => {
 			maxImageFileSizeMB: 5,
 			maxLengthProjectName: 50,
 			maxLengthProjectDescription: 300,
+			freeLaunchEndDate: "2026-08-31",
+			isFreeLaunchActive: true,
 		} as any)
 
 		const response = await fastify.inject({

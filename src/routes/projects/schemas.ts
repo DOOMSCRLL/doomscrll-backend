@@ -223,6 +223,8 @@ export const getProjectRulesResponseSchema = z.object({
 		maxImageFileSizeMB: z.number().int(),
 		maxLengthProjectName: z.number().int(),
 		maxLengthProjectDescription: z.number().int(),
+		freeLaunchEndDate: z.string(),
+		isFreeLaunchActive: z.boolean(),
 	}),
 })
 export type GetProjectRulesResponse = z.infer<typeof getProjectRulesResponseSchema>
