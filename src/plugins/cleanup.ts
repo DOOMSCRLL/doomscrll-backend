@@ -112,6 +112,11 @@ export default fp(async (fastify) => {
 			const expiredIds = expiredProjects.map((p) => p.id)
 			await db.delete(projects).where(inArray(projects.id, expiredIds))
 
+			await db.execute(sql`
+				DELETE FROM project_ledger 
+				WHERE id NOT IN (SELECT DISTINCT ledger_id FROM projects WHERE ledger_id IS NOT NULL)
+			`)
+
 			fastify.log.info(
 				`Daily reset cleanup completed. Deleted ${expiredProjects.length} projects, and ${keysToDelete.length} assets.`,
 			)

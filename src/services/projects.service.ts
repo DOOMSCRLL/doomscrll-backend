@@ -532,10 +532,9 @@ export class ProjectsService {
 
 		if (!projectData) return { error: "NOT_FOUND" as const }
 
-		if (projectData.status === "draft") {
+		if (projectData.status === "draft" || projectData.status === "incomplete" || projectData.status === "ready") {
+			await db.delete(projects).where(eq(projects.id, projectData.id))
 			await db.delete(projectLedger).where(eq(projectLedger.id, projectData.ledgerId))
-		} else if (projectData.status === "incomplete" || projectData.status === "ready") {
-			await db.update(projects).set({ status: "canceled" }).where(eq(projects.id, projectData.id))
 		} else {
 			return { error: "INVALID_STATE" as const }
 		}
@@ -555,6 +554,7 @@ export class ProjectsService {
 		const [projectData] = await db
 			.select({
 				id: projects.id,
+				ledgerId: projects.ledgerId,
 				status: projects.status,
 				showcaseDate: projects.showcaseDate,
 				coverImagePath: projects.coverImagePath,
@@ -589,7 +589,8 @@ export class ProjectsService {
 
 		if (!projectData.providerTransactionId || projectData.receiptStatus !== "succeeded") {
 			await db.transaction(async (tx) => {
-				await tx.update(projects).set({ status: "canceled" }).where(eq(projects.id, projectData.id))
+				await tx.delete(projects).where(eq(projects.id, projectData.id))
+				await tx.delete(projectLedger).where(eq(projectLedger.id, projectData.ledgerId))
 			})
 
 			const orphansToDelete: string[] = []
@@ -634,10 +635,11 @@ export class ProjectsService {
 		}
 
 		await db.transaction(async (tx) => {
-			await tx.update(projects).set({ status: "canceled" }).where(eq(projects.id, projectData.id))
 			if (projectData.receiptId) {
 				await tx.update(receipts).set({ status: "refunded" }).where(eq(receipts.id, projectData.receiptId))
 			}
+			await tx.delete(projects).where(eq(projects.id, projectData.id))
+			await tx.delete(projectLedger).where(eq(projectLedger.id, projectData.ledgerId))
 		})
 
 		const orphansToDelete: string[] = []
