@@ -1,7 +1,7 @@
 {
 	"name": "doomscrll-backend",
 	"private": true,
-	"version": "0.4.0",
+	"version": "0.4.1",
 	"author": "Yakup Murat ÇAYLAK",
 	"description": "Backend for the DOOMSCRLL project.",
 	"main": "app.ts",

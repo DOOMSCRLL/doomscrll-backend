@@ -588,32 +588,49 @@ export class ProjectsService {
 		}
 
 		if (!projectData.providerTransactionId || projectData.receiptStatus !== "succeeded") {
-			return { error: "INVALID_STATE" as const, message: "No successful payment found to refund." }
-		}
-
-		const apiKey = process.env.LEMONSQUEEZY_WEBHOOK_API_KEY
-		if (!apiKey) {
-			throw new ServiceError("INTERNAL_ERROR", { message: "Missing LemonSqueezy API key." })
-		}
-
-		const lsResponse = await fetch(
-			`https://api.lemonsqueezy.com/v1/orders/${projectData.providerTransactionId}/refund`,
-			{
-				method: "POST",
-				headers: {
-					Accept: "application/vnd.api+json",
-					"Content-Type": "application/vnd.api+json",
-					Authorization: `Bearer ${apiKey}`,
-				},
-			},
-		)
-
-		if (!lsResponse.ok) {
-			const errorData = await lsResponse.json().catch(() => ({}))
-			throw new ServiceError("INTERNAL_ERROR", {
-				message: "Failed to issue refund via Lemon Squeezy.",
-				details: errorData,
+			await db.transaction(async (tx) => {
+				await tx.update(projects).set({ status: "canceled" }).where(eq(projects.id, projectData.id))
 			})
+
+			const orphansToDelete: string[] = []
+			if (projectData.coverImagePath) orphansToDelete.push(projectData.coverImagePath)
+			if (projectData.screenshotPaths && projectData.screenshotPaths.length > 0)
+				orphansToDelete.push(...projectData.screenshotPaths)
+
+			if (orphansToDelete.length > 0) {
+				Promise.allSettled(
+					orphansToDelete.map((key) => r2Client.send(new DeleteObjectCommand({ Bucket: BUCKET_NAME, Key: key }))),
+				).catch((err) => console.error("Failed to delete orphaned CDN images upon cancellation:", err))
+			}
+
+			return { success: true as const, message: "Reservation canceled successfully." }
+		}
+
+		const apiKey = process.env.LEMONSQUEEZY_API_KEY || process.env.LEMONSQUEEZY_WEBHOOK_API_KEY
+		if (apiKey) {
+			const lsResponse = await fetch(
+				`https://api.lemonsqueezy.com/v1/orders/${projectData.providerTransactionId}/refund`,
+				{
+					method: "POST",
+					headers: {
+						Accept: "application/vnd.api+json",
+						"Content-Type": "application/vnd.api+json",
+						Authorization: `Bearer ${apiKey}`,
+					},
+				},
+			)
+
+			if (!lsResponse.ok) {
+				const errorData = await lsResponse.json().catch(() => ({}))
+				if (process.env.ALLOW_TEST_MODE_WEBHOOKS === "true") {
+					console.warn("Test mode refund skipped Lemon Squeezy API failure gracefully.")
+				} else {
+					throw new ServiceError("INTERNAL_ERROR", {
+						message: "Failed to issue refund via Lemon Squeezy.",
+						details: errorData,
+					})
+				}
+			}
 		}
 
 		await db.transaction(async (tx) => {
