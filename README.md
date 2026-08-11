@@ -158,6 +158,7 @@ All backend endpoints format their errors consistently. When `success === false`
 | `INVALID_SIGNATURE`    | Invalid webhook signature.                                           | Lemon Squeezy HMAC mismatch.                         |
 | `MALFORMED_JSON`       | Malformed JSON body.                                                 | Invalid webhook body.                                |
 | `MISSING_REFERENCE_ID` | Missing project reference ID in payload.                             | Webhook missing custom data.                         |
+| `OFFER_EXPIRED`       | Free launch week offer has expired. Payment is required.             | Calling `claim-free` route after `FREE_LAUNCH_END_DATE`. |
 
 ---
 
@@ -191,6 +192,7 @@ All backend endpoints format their errors consistently. When `success === false`
 - `GET /me` - Fetches all confirmed projects (incomplete or ready) belonging to the authenticated creator. Returns an array of limited project data (`referenceId`, `category`, `name`, `showcaseDate`, `status`). Used for populating creator menus.
 - `GET /me/:referenceId` - Fetches the full database schema for a single project owned by the authenticated creator. Used by the frontend to safely populate the update form with existing content.
 - `POST /reserve` - The transaction bouncer. Verifies UTC deadzones, enforces the 256 daily slot limit, enforces **max 1 draft rule**, and checks the `project_ledger` for the 14-day anti-abuse cooldown. Creates a `"draft"` and returns the `referenceId`.
+- `POST /:referenceId/claim-free` - Allows creators to claim a free launch slot during early launch week without payment checkout. Validates `FREE_LAUNCH_END_DATE` date-guard, verifies ownership, and transitions `status: "draft"` -> `"incomplete"`.
 - `GET /drafts/active` - Fetches the `referenceId` and `reservedAt` of a creator's active unpaid draft. Dynamically filters out drafts older than 15 minutes to prevent expiration leaks before the hourly cron job runs.
 - `GET /drafts/:referenceId` - Fetches a creator's own active draft (or paid incomplete project). Used heavily during the payment flow to verify checkout states. Dynamically checks for 15-minute expiration.
 - `DELETE /:referenceId` - Cancels the project (hard delete for unpaid drafts, `"canceled"` status update for paid).
@@ -203,4 +205,4 @@ All backend endpoints format their errors consistently. When `success === false`
 ### Webhooks API (`/webhooks`)
 
 - `POST /lemonsqueezy` - Passive listener for payment events. Expects a raw body to verify the Lemon Squeezy cryptographic `X-Signature`. Upon a successful `order_created` event, extracts the DOOMLIT `referenceId` from `custom_data`, updates the project to `"incomplete"`, and writes an immutable `receipt`.
-  - _Note:_ The backend dynamically verifies the signature against `LEMONSQUEEZY_TEST_WEBHOOK_SECRET` or `LEMONSQUEEZY_LIVE_WEBHOOK_SECRET` based on the payload's `meta.test_mode` flag. If `NODE_ENV=production`, test-mode webhooks are instantly rejected with a 200 OK to prevent database pollution.
+  - _Note:_ The backend dynamically verifies signatures against `LEMONSQUEEZY_TEST_WEBHOOK_SECRET` or `LEMONSQUEEZY_LIVE_WEBHOOK_SECRET`. Supports `ALLOW_TEST_MODE_WEBHOOKS="true"` environment flag to process test mode webhooks on production during pre-verification phase.
