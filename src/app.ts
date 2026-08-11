@@ -60,8 +60,9 @@ const app: FastifyPluginAsync<AppOptions> = async (fastify, opts): Promise<void>
 			}
 
 			const allowedOrigins = [
-				"https://doomlit.doomscrll.com", // DOOMLIT reservation app
-				"https://doomscrll.com", // Landing page
+				"https://doomlit.doomscrll.com",
+				"https://app.doomscrll.com",
+				"https://doomscrll.com",
 				"https://www.doomscrll.com",
 			]
 

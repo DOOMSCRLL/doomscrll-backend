@@ -12,8 +12,8 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
 		{
 			config: {
 				rateLimit: {
-					max: 3,
-					timeWindow: "5 minutes",
+					max: 5,
+					timeWindow: "15 minutes",
 				},
 			},
 			schema: {
@@ -28,6 +28,12 @@ const authRoutes: FastifyPluginAsync = async (fastify) => {
 	typedFastify.post(
 		"/verify",
 		{
+			config: {
+				rateLimit: {
+					max: 10,
+					timeWindow: "15 minutes",
+				},
+			},
 			schema: {
 				body: z.object({
 					email: z.email("Invalid email format"),
