@@ -5,7 +5,6 @@ import { db } from "../db/index.js"
 import { otpCodes, profiles, sessions } from "../db/schema.js"
 
 const Plunk = PlunkModule.default || PlunkModule
-const plunk = new Plunk(process.env.PLUNK_API_KEY || "dev-key")
 
 export class AuthService {
 	static async requestOtp(email: string, isDev = false): Promise<void> {
@@ -24,11 +23,19 @@ export class AuthService {
 			console.log(`\tEMAIL OTP FOR ${email}: ${plainOtp}`)
 			console.log(`****************\n`)
 		} else {
-			await plunk.emails.send({
-				to: email,
-				subject: "Your DOOMSCRLL login code",
-				body: `<h1>Welcome to DOOMSCRLL</h1><p>Your secure sign-in code is: <strong>${plainOtp}</strong>.</p><p>This code expires in 10 minutes.</p>`,
-			})
+			const plunkApiKey = process.env.PLUNK_API_KEY || ""
+			const plunk = new Plunk(plunkApiKey)
+			try {
+				await plunk.emails.send({
+					to: email,
+					subject: "Your DOOMSCRLL login code",
+					body: `<h1>Welcome to DOOMSCRLL</h1><p>Your secure sign-in code is: <strong>${plainOtp}</strong>.</p><p>This code expires in 10 minutes.</p>`,
+				})
+			} catch (err) {
+				const maskedKey = plunkApiKey ? `${plunkApiKey.substring(0, 7)}...` : "NONE"
+				console.error(`Plunk email dispatch failed for ${email} using key [${maskedKey}]:`, err)
+				throw err
+			}
 		}
 	}
 
