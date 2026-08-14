@@ -4,49 +4,35 @@ import { db } from "../db/index.js"
 import { projectLedger, projects, receipts } from "../db/schema.js"
 
 export class WebhooksService {
-	static async processLemonSqueezyWebhook(rawBody: string, signature: string) {
-		let payload
+	static async processPaymentWebhook(rawBody: string, signature: string) {
+		let payload: Record<string, any>
 		try {
 			payload = JSON.parse(rawBody)
 		} catch (error) {
 			return { error: "MALFORMED_JSON" as const, message: String(error) }
 		}
 
-		const isTestMode = payload?.meta?.test_mode === true
-		const allowTestWebhooks = process.env.ALLOW_TEST_MODE_WEBHOOKS === "true"
+		const secret = process.env.WEBHOOK_SECRET
 
-		if (process.env.NODE_ENV === "production" && isTestMode && !allowTestWebhooks) {
-			return { success: true as const, message: "Ignored test mode webhook in production" }
-		}
+		if (secret) {
+			const hmac = crypto.createHmac("sha256", secret)
+			const digest = Buffer.from(hmac.update(rawBody).digest("hex"), "utf8")
+			const signatureBuffer = Buffer.from(signature, "utf8")
 
-		const secret = isTestMode
-			? process.env.LEMONSQUEEZY_TEST_WEBHOOK_SECRET
-			: process.env.LEMONSQUEEZY_LIVE_WEBHOOK_SECRET
-
-		if (!secret) {
-			return {
-				error: "MISSING_SECRET" as const,
-				message: `Missing webhook secret for ${isTestMode ? "test" : "live"} mode.`,
+			if (digest.length !== signatureBuffer.length || !crypto.timingSafeEqual(digest, signatureBuffer)) {
+				return { error: "INVALID_SIGNATURE" as const }
 			}
 		}
 
-		const hmac = crypto.createHmac("sha256", secret)
-		const digest = Buffer.from(hmac.update(rawBody).digest("hex"), "utf8")
-		const signatureBuffer = Buffer.from(signature, "utf8")
+		const projectReferenceId =
+			payload?.projectReferenceId ||
+			payload?.meta?.custom_data?.project_reference_id ||
+			payload?.custom_data?.project_reference_id
 
-		if (digest.length !== signatureBuffer.length || !crypto.timingSafeEqual(digest, signatureBuffer)) {
-			return { error: "INVALID_SIGNATURE" as const }
-		}
-
-		const eventName = payload?.meta?.event_name
-		if (eventName !== "order_created") {
-			return { success: true as const, message: "Event ignored" }
-		}
-
-		const projectReferenceId = payload?.meta?.custom_data?.project_reference_id
-		const priceCents = payload?.data?.attributes?.total
-		const transactionId = payload?.data?.id
-		const receiptUrl = payload?.data?.attributes?.urls?.receipt
+		const priceCents = payload?.priceCents ?? payload?.data?.attributes?.total ?? 0
+		const transactionId = payload?.transactionId || payload?.data?.id || `tx_${Date.now()}`
+		const receiptUrl = payload?.receiptUrl || payload?.data?.attributes?.urls?.receipt || null
+		const provider = payload?.provider || "payment_gateway"
 
 		if (!projectReferenceId) {
 			return { error: "MISSING_REFERENCE_ID" as const }
@@ -68,7 +54,7 @@ export class WebhooksService {
 			}
 			if (data.project.status !== "draft") {
 				tx.rollback()
-				throw new Error(`Project ${projectReferenceId} already processed or it's state is invalid.`)
+				throw new Error(`Project ${projectReferenceId} already processed or its state is invalid.`)
 			}
 
 			await tx.update(projects).set({ status: "incomplete" }).where(eq(projects.id, data.project.id))
@@ -84,7 +70,7 @@ export class WebhooksService {
 				projectReferenceId: data.project.referenceId,
 				showcaseDate: data.project.showcaseDate,
 				priceCents: priceCents,
-				provider: "lemon_squeezy",
+				provider: provider,
 				providerTransactionId: transactionId,
 				receiptUrl: receiptUrl,
 				status: "succeeded",

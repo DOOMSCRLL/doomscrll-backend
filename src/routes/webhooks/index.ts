@@ -11,11 +11,11 @@ export const webhookRoutes: FastifyPluginAsync = async (fastify) => {
 	})
 
 	fastify.post(
-		"/lemonsqueezy",
+		"/payment",
 		{
 			config: { rawBody: true },
 		},
-		WebhooksController.handleLemonSqueezy,
+		WebhooksController.handlePaymentWebhook,
 	)
 }
 

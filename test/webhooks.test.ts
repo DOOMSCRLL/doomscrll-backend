@@ -6,7 +6,7 @@ import { WebhooksService } from "../src/services/webhooks.service.js"
 vi.mock("../src/services/webhooks.service.js", () => {
 	return {
 		WebhooksService: {
-			processLemonSqueezyWebhook: vi.fn(),
+			processPaymentWebhook: vi.fn(),
 		},
 	}
 })
@@ -17,56 +17,56 @@ describe("Webhook Routes", () => {
 	beforeEach(async () => {
 		vi.clearAllMocks()
 		fastify = Fastify()
-		process.env.LEMONSQUEEZY_WEBHOOK_SECRET = "test-secret"
+		process.env.WEBHOOK_SECRET = "test-secret"
 		await fastify.register(webhookRoutes, { prefix: "/webhooks" })
 		await fastify.ready()
 	})
 
-	it("should handle Lemon Squeezy webhook successfully", async () => {
-		vi.mocked(WebhooksService.processLemonSqueezyWebhook).mockResolvedValue({
+	it("should handle payment webhook successfully", async () => {
+		vi.mocked(WebhooksService.processPaymentWebhook).mockResolvedValue({
 			success: true,
 			projectReferenceId: "ref123",
 		} as any)
 
 		const response = await fastify.inject({
 			method: "POST",
-			url: "/webhooks/lemonsqueezy",
+			url: "/webhooks/payment",
 			headers: {
-				"x-signature": "test-signature",
+				"webhook-signature": "test-signature",
 			},
-			payload: { meta: { event_name: "order_created" } },
+			payload: { projectReferenceId: "ref123" },
 		})
 
 		expect(response.statusCode).toBe(200)
-		expect(WebhooksService.processLemonSqueezyWebhook).toHaveBeenCalled()
+		expect(WebhooksService.processPaymentWebhook).toHaveBeenCalled()
 	})
 
 	it("should return 401 on invalid signature", async () => {
-		vi.mocked(WebhooksService.processLemonSqueezyWebhook).mockResolvedValue({ error: "INVALID_SIGNATURE" } as any)
+		vi.mocked(WebhooksService.processPaymentWebhook).mockResolvedValue({ error: "INVALID_SIGNATURE" } as any)
 
 		const response = await fastify.inject({
 			method: "POST",
-			url: "/webhooks/lemonsqueezy",
+			url: "/webhooks/payment",
 			headers: {
-				"x-signature": "bad-signature",
+				"webhook-signature": "bad-signature",
 			},
-			payload: { meta: { event_name: "order_created" } },
+			payload: { projectReferenceId: "ref123" },
 		})
 
 		expect(response.statusCode).toBe(401)
 	})
 
 	it("should return 400 on malformed json payload", async () => {
-		vi.mocked(WebhooksService.processLemonSqueezyWebhook).mockResolvedValue({
+		vi.mocked(WebhooksService.processPaymentWebhook).mockResolvedValue({
 			error: "MALFORMED_JSON",
 			message: "Bad JSON",
 		} as any)
 
 		const response = await fastify.inject({
 			method: "POST",
-			url: "/webhooks/lemonsqueezy",
-			headers: { "x-signature": "test-signature" },
-			payload: { meta: { event_name: "order_created" } },
+			url: "/webhooks/payment",
+			headers: { "webhook-signature": "test-signature" },
+			payload: { projectReferenceId: "ref123" },
 		})
 
 		expect(response.statusCode).toBe(400)
@@ -74,13 +74,13 @@ describe("Webhook Routes", () => {
 	})
 
 	it("should return 400 when missing reference ID", async () => {
-		vi.mocked(WebhooksService.processLemonSqueezyWebhook).mockResolvedValue({ error: "MISSING_REFERENCE_ID" } as any)
+		vi.mocked(WebhooksService.processPaymentWebhook).mockResolvedValue({ error: "MISSING_REFERENCE_ID" } as any)
 
 		const response = await fastify.inject({
 			method: "POST",
-			url: "/webhooks/lemonsqueezy",
-			headers: { "x-signature": "test-signature" },
-			payload: { meta: { event_name: "order_created" } },
+			url: "/webhooks/payment",
+			headers: { "webhook-signature": "test-signature" },
+			payload: {},
 		})
 
 		expect(response.statusCode).toBe(400)

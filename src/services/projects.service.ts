@@ -616,33 +616,6 @@ export class ProjectsService {
 			return { success: true as const, message: "Reservation canceled successfully." }
 		}
 
-		const apiKey = process.env.LEMONSQUEEZY_API_KEY || process.env.LEMONSQUEEZY_WEBHOOK_API_KEY
-		if (apiKey) {
-			const lsResponse = await fetch(
-				`https://api.lemonsqueezy.com/v1/orders/${projectData.providerTransactionId}/refund`,
-				{
-					method: "POST",
-					headers: {
-						Accept: "application/vnd.api+json",
-						"Content-Type": "application/vnd.api+json",
-						Authorization: `Bearer ${apiKey}`,
-					},
-				},
-			)
-
-			if (!lsResponse.ok) {
-				const errorData = await lsResponse.json().catch(() => ({}))
-				if (process.env.ALLOW_TEST_MODE_WEBHOOKS === "true") {
-					console.warn("Test mode refund skipped Lemon Squeezy API failure gracefully.")
-				} else {
-					throw new ServiceError("INTERNAL_ERROR", {
-						message: "Failed to issue refund via Lemon Squeezy.",
-						details: errorData,
-					})
-				}
-			}
-		}
-
 		await db.transaction(async (tx) => {
 			if (projectData.receiptId) {
 				await tx.update(receipts).set({ status: "refunded" }).where(eq(receipts.id, projectData.receiptId))

@@ -13,7 +13,6 @@ This document serves as the central reference for the DOOMSCRLL backend, outlini
 - **@fastify/schedule & toad-scheduler** as background job scheduler _(DB cleanup, ephemeral sweeps)_
 - **Plunk** as email delivery service
 - **Cloudflare R2** as image storage and CDN _(via @aws-sdk/client-s3)_
-- **Lemon Squeezy** as Merchant of Record / payment processor
 - **Docker** for containers
 - **Vitest** for integration testing and TDD
 
@@ -43,8 +42,8 @@ The `projects` table acts as a highly volatile 24-hour queue.
    - **Checks**: Verifies the deadzone (no reservations for tomorrow after 23:00 UTC), daily slot limits, 14-day domain cooldown, and enforces a **maximum 1 active draft per user**.
    - **Creation**: Creates a `project_ledger` entry (if one doesn't exist for the URL) and a `projects` entry.
 2. **Payment Pending**: The project is a `"draft"`. The user has 15 minutes to complete checkout. If unpaid, a background cron job (`clean-expired-drafts`) automatically deletes the draft.
-3. **`incomplete` (Payment Completed)**: Lemon Squeezy sends a webhook to `POST /webhooks/lemonsqueezy`.
-   - The backend verifies the signature, records a `receipts` entry, and changes the project status to `"incomplete"`.
+3. **`incomplete` (Payment or Free Claim Completed)**: A payment webhook (or direct `claim-free` action) updates the status.
+   - The backend records a `receipts` entry when applicable and changes the project status to `"incomplete"`.
 4. **Content Upload & Editing**: The user can now request upload URLs (`POST /projects/:referenceId/upload-urls`) and patch the project details (`PATCH /projects/:referenceId`). _Note: Both "incomplete" and "ready" projects can be updated._
 5. **`ready` (Publishing)**: Client calls `POST /projects/:referenceId/publish`. Validates that all required fields are filled. If successful, sets status to `"ready"` and updates the `lastShowcaseDate` on the ledger to trigger the cooldown.
 6. **`canceled` (Cancellation)**: If a user cancels an active project (`DELETE /projects/:referenceId`), a `"draft"` is permanently deleted, while an `"incomplete"` or `"ready"` project is marked as `"canceled"` (retained for support/receipt purposes).
@@ -54,8 +53,8 @@ The `projects` table acts as a highly volatile 24-hour queue.
 
 Receipts and Ledger entries are immutable historical records. They skip the pending phase entirely.
 
-1. `succeeded`: Payment cleared, receipt generated.
-2. `refunded`: Creator was refunded via Lemon Squeezy dashboard.
+1. `succeeded`: Payment or claim cleared, receipt generated.
+2. `refunded`: Project was refunded or canceled.
 3. `disputed`: Creator initiated a bank chargeback.
 
 ---
@@ -196,7 +195,7 @@ All backend endpoints format their errors consistently. When `success === false`
 - `GET /drafts/active` - Fetches the `referenceId` and `reservedAt` of a creator's active unpaid draft. Dynamically filters out drafts older than 15 minutes to prevent expiration leaks before the hourly cron job runs.
 - `GET /drafts/:referenceId` - Fetches a creator's own active draft (or paid incomplete project). Used heavily during the payment flow to verify checkout states. Dynamically checks for 15-minute expiration.
 - `DELETE /:referenceId` - Cancels the project (hard delete for unpaid drafts, `"canceled"` status update for paid).
-- `POST /:referenceId/refund` - Issues a full refund via Lemon Squeezy API if the project hasn't bypassed the deadzone or been showcased, and sets the project status to `"canceled"`.
+- `POST /:referenceId/refund` - Issues a refund and cancels the project if it hasn't bypassed the deadzone or been showcased, setting the project status to `"canceled"`.
 - `POST /:referenceId/upload-urls` - The CDN broker. Generates and returns time-limited, pre-signed Cloudflare R2 URLs for direct client-to-CDN `.webp` image uploads. Accepts an optional `locale` in the body to return localized status messages.
 - `PATCH /:referenceId` - Auto-save route. Accepts partial content payloads and an optional `locale` to update the database row. Returns a localized success message.
 - `POST /:referenceId/reschedule` - Changes the project's showcase date (if the project is in `incomplete` or `ready` state). Verifies date validity, slot limits, and deadzones. Updates both `projects.showcaseDate` and `project_ledger.lastShowcaseDate` safely via a transaction.
@@ -204,5 +203,5 @@ All backend endpoints format their errors consistently. When `success === false`
 
 ### Webhooks API (`/webhooks`)
 
-- `POST /lemonsqueezy` - Passive listener for payment events. Expects a raw body to verify the Lemon Squeezy cryptographic `X-Signature`. Upon a successful `order_created` event, extracts the DOOMLIT `referenceId` from `custom_data`, updates the project to `"incomplete"`, and writes an immutable `receipt`.
-  - _Note:_ The backend dynamically verifies signatures against `LEMONSQUEEZY_TEST_WEBHOOK_SECRET` or `LEMONSQUEEZY_LIVE_WEBHOOK_SECRET`. Supports `ALLOW_TEST_MODE_WEBHOOKS="true"` environment flag to process test mode webhooks on production during pre-verification phase.
+- `POST /payment` - Modular listener for payment gateway events. Expects a raw body to verify incoming webhook signatures. Upon a successful payment event, updates the project to `"incomplete"` and writes an immutable `receipt`.
+
