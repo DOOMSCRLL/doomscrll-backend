@@ -204,4 +204,3 @@ All backend endpoints format their errors consistently. When `success === false`
 ### Webhooks API (`/webhooks`)
 
 - `POST /payment` - Modular listener for payment gateway events. Expects a raw body to verify incoming webhook signatures. Upon a successful payment event, updates the project to `"incomplete"` and writes an immutable `receipt`.
-
