@@ -1,163 +1,130 @@
-# DOOMSCRLL Backend Documentation
+# DOOMSCRLL Backend API
 
-This document serves as the central reference for the DOOMSCRLL backend, outlining how state flows, how the database is structured, the available API endpoints, and the unified error handling system.
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](LICENSE)
+[![Framework](https://img.shields.io/badge/Fastify-5.0-black.svg)](https://fastify.dev/)
+[![Database](https://img.shields.io/badge/PostgreSQL-16-blue.svg)](https://www.postgresql.org/)
+[![ORM](https://img.shields.io/badge/Drizzle-ORM-brightgreen.svg)](https://orm.drizzle.team/)
+
+This repository powers the backend REST API and data service layer for the **DOOMSCRLL** ecosystem. It manages the ephemeral 24-hour project showcase queue, user OTP authentication, pre-signed Cloudflare R2 media upload brokerage, background job scheduling, and payment webhook integrations.
+
+---
+
+## 🌐 DOOMSCRLL Open Source Ecosystem
+
+- **Backend API** (`doomscrll-backend`) — _You are here_
+- **Landing Website** (`doomscrll-landing-website`) — Astro public portal
+- **Audience Webapp** (`doomscrll-webapp-audience`) — SvelteKit 2 showcase & discovery feed
+- **Creator Webapp** (`doomscrll-webapp-doomlit`) — SvelteKit 2 slot reservation & creator dashboard
+- **Audience Mobile App** (`doomscrll_app_audience`) — Cross-platform Flutter MVVM mobile app
 
 ---
 
 ## 1. Tech Stack & Architecture
 
-- **Fastify** as server _(Cookies, CORS, rate limiter, raw-body parsing)_
-- **PostgreSQL** as database
-- **Drizzle** as ORM
-- **zod** as schema verifier
-- **@fastify/schedule & toad-scheduler** as background job scheduler _(DB cleanup, ephemeral sweeps)_
-- **Plunk** as email delivery service
-- **Cloudflare R2** as image storage and CDN _(via @aws-sdk/client-s3)_
-- **Docker** for containers
-- **Vitest** for integration testing and TDD
+- **Fastify 5** as server _(Cookies, CORS, rate limiter, raw-body parsing)_
+- **PostgreSQL 16** as database
+- **Drizzle ORM** as schema layer
+- **Zod** as runtime request validation schema
+- **@fastify/schedule & toad-scheduler** for background crons _(Daily reset sweep, expired draft cleanup)_
+- **Plunk** as transactional email service
+- **Cloudflare R2** as object storage and CDN broker _(via AWS S3 SDK)_
+- **Docker & Caddy** for containerized reverse proxy deployment
+- **Vitest** for integration tests
 
-The backend follows a strict **Service-Controller-Route** pattern for maximum testability:
+The backend follows a strict **Service-Controller-Route** pattern:
 
-- **Routes (`src/routes`)**: Defines Fastify endpoints, HTTP methods, and Zod validation schemas.
-- **Controllers (`src/controllers`)**: Manages HTTP context (Request/Reply) and passes typed payloads to services.
-- **Services (`src/services`)**: Contains pure, decoupled business logic and handles direct DB/third-party API interactions.
+- **Routes (`src/routes`)**: Defines Fastify endpoints, HTTP verbs, and Zod payload validation.
+- **Controllers (`src/controllers`)**: Handles request/reply lifecycle and HTTP status codes.
+- **Services (`src/services`)**: Encapsulates pure business logic and DB transactions.
 
 ---
 
-## 2. Core Workflows & State Machines
+## 2. Quick Start & Setup
 
-The DOOMLIT architecture safely decouples the user's content journey from the financial ledger.
+### Prerequisites
+
+- **Node.js**: `v20.x` or higher
+- **PostgreSQL**: `v16.x` (or via Docker)
+
+### Installation
+
+1. **Clone the repository**:
+
+   ```bash
+   git clone https://github.com/DOOMSCRLL/doomscrll-backend.git
+   cd doomscrll-backend
+   ```
+
+2. **Configure Environment Variables**:
+
+   ```bash
+   cp .env.example .env
+   ```
+
+   Edit `.env` to populate your local PostgreSQL database URL and development credentials.
+
+3. **Install Dependencies**:
+
+   ```bash
+   npm install
+   ```
+
+4. **Start PostgreSQL Database (via Docker)**:
+
+   ```bash
+   docker compose up -d db
+   ```
+
+5. **Run Database Migrations & Seeds**:
+
+   ```bash
+   npx drizzle-kit push
+   npm run db:seed
+   ```
+
+6. **Start Development Server**:
+
+   ```bash
+   npm run dev
+   ```
+
+   The API will be available at `http://127.0.0.1:3000`.
+
+7. **Run Tests**:
+   ```bash
+   npm test
+   ```
+
+---
+
+## 3. Core Workflows & State Machines
 
 ### Authentication Flow (Passwordless / OTP)
 
-1. User requests a one-time password via `POST /auth/request-otp` providing their email.
-2. User verifies the code via `POST /auth/verify-otp`. Upon success, the backend sets an `httpOnly`, `secure`, `lax` cookie (`session_id`) and returns a CSRF token.
-3. For any subsequent authenticated mutating requests (`POST`, `PATCH`, `PUT`, `DELETE`), the client must pass the CSRF token in the headers (typically `x-csrf-token`).
+1. User requests a one-time password via `POST /auth/request-otp` with their email.
+2. User verifies code via `POST /auth/verify-otp`. Returns a `csrfToken` and sets an `httpOnly`, `secure`, `lax` session cookie (`session_id`).
+3. Authenticated mutating requests (`POST`, `PATCH`, `PUT`, `DELETE`) require the `x-csrf-token` header.
 
 ### DOOMLIT Lifecycle (`project_status` Enum)
 
-The `projects` table acts as a highly volatile 24-hour queue.
+The `projects` table acts as a 24-hour showcase queue:
 
-1. **`draft` (Reservation)**: Client calls `POST /projects/reserve`.
-   - **Checks**: Verifies the deadzone (no reservations for tomorrow after 23:00 UTC), daily slot limits, 14-day domain cooldown, and enforces a **maximum 1 active draft per user**.
-   - **Creation**: Creates a `project_ledger` entry (if one doesn't exist for the URL) and a `projects` entry.
-2. **Payment Pending**: The project is a `"draft"`. The user has 15 minutes to complete checkout. If unpaid, a background cron job (`clean-expired-drafts`) automatically deletes the draft.
-3. **`incomplete` (Payment or Free Claim Completed)**: A payment webhook (or direct `claim-free` action) updates the status.
-   - The backend records a `receipts` entry when applicable and changes the project status to `"incomplete"`.
-4. **Content Upload & Editing**: The user can now request upload URLs (`POST /projects/:referenceId/upload-urls`) and patch the project details (`PATCH /projects/:referenceId`). _Note: Both "incomplete" and "ready" projects can be updated._
-5. **`ready` (Publishing)**: Client calls `POST /projects/:referenceId/publish`. Validates that all required fields are filled. If successful, sets status to `"ready"` and updates the `lastShowcaseDate` on the ledger to trigger the cooldown.
-6. **`canceled` (Cancellation)**: If a user cancels an active project (`DELETE /projects/:referenceId`), a `"draft"` is permanently deleted, while an `"incomplete"` or `"ready"` project is marked as `"canceled"` (retained for support/receipt purposes).
-7. **Daily Reset**: Every day at 00:00 UTC, the `clean-daily-reset` cron job hard-deletes any `projects` (and their associated R2 image assets) where the `showcaseDate` is strictly less than today.
-
-### Financial Ledger (`receipt_status` Enum)
-
-Receipts and Ledger entries are immutable historical records. They skip the pending phase entirely.
-
-1. `succeeded`: Payment or claim cleared, receipt generated.
-2. `refunded`: Project was refunded or canceled.
-3. `disputed`: Creator initiated a bank chargeback.
+1. **`draft` (Reservation)**: Client calls `POST /projects/reserve`. Checks UTC deadzones (after 23:00 UTC), daily slot limits, and 14-day domain cooldowns.
+2. **`incomplete` (Free Claim or Payment Cleared)**: Initiated via `POST /projects/:referenceId/claim-free` or payment webhook.
+3. **Content Upload & Editing**: User requests pre-signed R2 upload URLs (`POST /projects/:referenceId/upload-urls`) and patches metadata (`PATCH /projects/:referenceId`).
+4. **`ready` (Publishing)**: Client calls `POST /projects/:referenceId/publish`. Enforces Zod validation schema and locks in showcase queue.
+5. **`canceled`**: Canceled projects are hard-deleted if draft, or marked `canceled` if published/incomplete.
+6. **Daily Reset Cron**: Daily at 00:00 UTC, `clean-daily-reset` sweeps past projects and cleans R2 assets.
 
 ---
 
-## 3. Database Schema
+## 4. Database Schema Overview
 
-### `profiles`
-
-User accounts.
-
-- `id` (uuid, PK)
-- `email` (string, Unique)
-- `username` (string, Unique)
-- `description` (string)
-- `url` (string)
-- `createdAt` (timestamp)
-
-### `sessions` & `otp_codes`
-
-Auth management.
-
-- **otp_codes**: `id`, `email`, `code`, `expiresAt`
-- **sessions**: `id`, `profileId` (Cascade delete on profile), `expiresAt`
-
-### `project_ledger`
-
-Permanent record linking a user to a specific `primaryUrl` to enforce the 14-day cooldown.
-
-- `id` (uuid, PK)
-- `profileId` (uuid)
-- `primaryUrl` (string, Unique)
-- `lastShowcaseDate` (date)
-- `createdAt` (timestamp)
-
-### `projects`
-
-Ephemeral project details showcasing for a single day. Cascade deletes if `project_ledger` is deleted.
-
-- `id` (uuid, PK)
-- `referenceId` (string, Unique)
-- `ledgerId` (uuid, FK)
-- `showcaseDate` (date)
-- `status` (Enum: `"draft"`, `"incomplete"`, `"ready"`, `"showcased"`, `"canceled"`)
-- `reservedAt` (timestamp)
-- _Content fields:_ `name`, `category`, `primaryPlatform`, `primaryUrl`, `description`, `tags`, `secondaryPlatforms`, `features`, `coverImagePath`, `screenshotPaths`, `videoUrl`
-- `createdAt` (timestamp)
-
-### `receipts`
-
-Immutable payment records.
-
-- `id` (uuid, PK)
-- `profileId` (uuid)
-- `ledgerId` (uuid)
-- `projectReferenceId` (string)
-- `showcaseDate` (date)
-- `priceCents` (integer)
-- `provider` (string)
-- `providerTransactionId` (string)
-- `receiptUrl` (string)
-- `status` (Enum: `"succeeded"`, `"refunded"`, `"disputed"`)
-- `createdAt` (timestamp)
-
----
-
-## 4. Global Error Map
-
-All backend endpoints format their errors consistently. When `success === false`, the response matches this schema:
-
-```typescript
-{
-  success: false,
-  error: {
-    code: string,
-    message: string,
-    details?: any // Optional Zod validation issues or context
-  }
-}
-```
-
-### Predefined Error Codes (`src/config/errors.ts`)
-
-| Code                   | Default Message                                                      | Trigger Condition                                        |
-| :--------------------- | :------------------------------------------------------------------- | :------------------------------------------------------- |
-| `INTERNAL_ERROR`       | An internal server error occurred.                                   | Unhandled exceptions or 500s.                            |
-| `NOT_FOUND`            | The requested resource was not found.                                | Missing profile, project, etc.                           |
-| `UNAUTHORIZED`         | You are not authorized to perform this action.                       | Missing session or manipulating another user's data.     |
-| `INVALID_PAYLOAD`      | The provided payload is invalid.                                     | Logic failures like booking past dates.                  |
-| `DEADZONE_ACTIVE`      | DOOMLIT reservations for the next day closes at 23:00.               | Booking tomorrow's slot after 23:00 UTC.                 |
-| `SLOT_UNAVAILABLE`     | All DOOMLIT slots have been reserved for this date.                  | Max daily slots reached.                                 |
-| `COOLDOWN_ACTIVE`      | A project cannot be re-showcased before 14 days...                   | Attempting to showcase a URL within 14 days.             |
-| `DRAFT_LIMIT_REACHED`  | You already have an active draft.                                    | Attempting to reserve while an unpaid draft exists.      |
-| `INVALID_URL`          | The provided URL does not exist or the product is not published yet. | Active validation caught a 404/400 for primaryUrl.       |
-| `INVALID_STATE`        | The project is not in a valid state for this action.                 | E.g. publishing a canceled project, editing a draft.     |
-| `VALIDATION_FAILED`    | Missing or invalid required fields.                                  | Zod parsing failed (returns `details`).                  |
-| `INVALID_DATE`         | Queried date must be in the future.                                  | Fetching previews for past dates.                        |
-| `SESSION_EXPIRED`      | Session expired or invalid.                                          | Expired `session_id` cookie.                             |
-| `INVALID_OTP`          | Invalid or expired code.                                             | Wrong OTP code on login.                                 |
-| `USERNAME_TAKEN`       | That username is already taken.                                      | Updating profile to a taken handle.                      |
-| `INVALID_SIGNATURE`    | Invalid webhook signature.                                           | Lemon Squeezy HMAC mismatch.                             |
-| `MALFORMED_JSON`       | Malformed JSON body.                                                 | Invalid webhook body.                                    |
-| `MISSING_REFERENCE_ID` | Missing project reference ID in payload.                             | Webhook missing custom data.                             |
-| `OFFER_EXPIRED`        | Free launch week offer has expired. Payment is required.             | Calling `claim-free` route after `FREE_LAUNCH_END_DATE`. |
+- `profiles`: User accounts.
+- `sessions` & `otp_codes`: Auth session persistence and ephemeral verification codes.
+- `project_ledger`: Permanent ledger tracking primary domain URLs to enforce 14-day anti-spam cooldowns.
+- `projects`: Ephemeral showcase projects.
+- `receipts`: Immutable transaction ledger.
 
 ---
 
@@ -165,42 +132,38 @@ All backend endpoints format their errors consistently. When `success === false`
 
 ### Auth API (`/auth`)
 
-- `POST /request-otp` - For sign-in/auth request. Generates and sends a 6-digit OTP to the user's email via Plunk.
-- `POST /verify-otp` - For sign-in/auth verification. Validates OTP, returns `csrfToken` & Sets `session_id` Cookie.
-- `POST /logout` (Protected) - Clears session cookie from DB and client.
-- `GET /csrf` (Protected) - Generates a new `csrfToken` for active sessions.
+- `POST /request-otp` - Sends OTP to email via Plunk.
+- `POST /verify-otp` - Validates OTP, sets session cookie, returns `csrfToken`.
+- `POST /logout` (Protected) - Destroys session.
+- `GET /csrf` (Protected) - Refreshes CSRF token.
 
 ### Profile API (`/profile`)
 
-- `GET /:username` (Public) - Returns public creator profile.
-- `GET /me` (Protected) - Returns profile of the authenticated user.
-- `PATCH /me` (Protected) - Updates profile of the authenticated user.
-- `DELETE /me` (Protected) - Hard deletes account and cascades.
+- `GET /:username` (Public) - Creator profile.
+- `GET /me` (Protected) - Authenticated creator profile.
+- `PATCH /me` (Protected) - Update handle or user bio.
 
 ### Projects API - Public (`/projects`)
 
-- `GET /rules` - Exposes backend configuration constants (e.g., daily slot limits, deadzones, cooldown periods, max tag count, max screenshot count, file size limits, max length rules, `freeLaunchEndDate`, `isFreeLaunchActive`) to dynamically synchronize the frontend UI components.
-- `GET /reservation-counts` - Query `{ year?, month? }`. Returns an optimized key-value map of active reservation counts per day for a given month and year, enabling the frontend calendar to instantly render slot availability.
-- `GET /projects-per-category` - Query `{ date }`. Returns an array of active showcased project counts grouped by category (`Array<{ category: string, count: number }>`) for a specific date (`YYYY-MM-DD`). Explicitly verifies total showcased items for the date and returns an empty array `[]` when no projects exist.
-- `GET /` - Fetches a batched feed of today's active DOOMLITs (`status = 'ready'`). Supports dynamic filtering (`category`, `tag`, and deep JSONB search for `platform`). When `tag` or `platform` filters are active, the response root includes a `queryCount` property to support dynamic UI pagination.
-- `GET /preview` - Query `{ date, category }`. Returns a limited preview (name, category, tags, author) of future DOOMLITs. Fails with a 400 if requested date is in the past.
-- `GET /:referenceId` - Fetches full details of a specific DOOMLIT for deep linking. Only functions on the active showcase day (`todayUtc`).
+- `GET /rules` - Returns configuration limits (daily slot limit, deadzone, cooldown period).
+- `GET /reservation-counts` - Monthly reservation count map.
+- `GET /projects-per-category` - Category counts for a given date.
+- `GET /` - Today's active showcased feed (`status = 'ready'`). Supports `category`, `tag`, and `platform` filters.
+- `GET /preview` - Preview upcoming slots for future dates.
+- `GET /:referenceId` - Direct project detail fetch.
 
 ### Projects API - Protected (`/projects`)
 
-- `GET /me` - Fetches all confirmed projects (incomplete or ready) belonging to the authenticated creator. Returns an array of limited project data (`referenceId`, `category`, `name`, `showcaseDate`, `status`). Used for populating creator menus.
-- `GET /me/:referenceId` - Fetches the full database schema for a single project owned by the authenticated creator. Used by the frontend to safely populate the update form with existing content.
-- `POST /reserve` - The transaction bouncer. Verifies UTC deadzones, enforces the 256 daily slot limit, enforces **max 1 draft rule**, and checks the `project_ledger` for the 14-day anti-abuse cooldown. Creates a `"draft"` and returns the `referenceId`.
-- `POST /:referenceId/claim-free` - Allows creators to claim a free launch slot during early launch week without payment checkout. Validates `FREE_LAUNCH_END_DATE` date-guard, verifies ownership, and transitions `status: "draft"` -> `"incomplete"`.
-- `GET /drafts/active` - Fetches the `referenceId` and `reservedAt` of a creator's active unpaid draft. Dynamically filters out drafts older than 15 minutes to prevent expiration leaks before the hourly cron job runs.
-- `GET /drafts/:referenceId` - Fetches a creator's own active draft (or paid incomplete project). Used heavily during the payment flow to verify checkout states. Dynamically checks for 15-minute expiration.
-- `DELETE /:referenceId` - Cancels the project (hard delete for unpaid drafts, `"canceled"` status update for paid).
-- `POST /:referenceId/refund` - Issues a refund and cancels the project if it hasn't bypassed the deadzone or been showcased, setting the project status to `"canceled"`.
-- `POST /:referenceId/upload-urls` - The CDN broker. Generates and returns time-limited, pre-signed Cloudflare R2 URLs for direct client-to-CDN `.webp` image uploads. Accepts an optional `locale` in the body to return localized status messages.
-- `PATCH /:referenceId` - Auto-save route. Accepts partial content payloads and an optional `locale` to update the database row. Returns a localized success message.
-- `POST /:referenceId/reschedule` - Changes the project's showcase date (if the project is in `incomplete` or `ready` state). Verifies date validity, slot limits, and deadzones. Updates both `projects.showcaseDate` and `project_ledger.lastShowcaseDate` safely via a transaction.
-- `POST /:referenceId/publish` - The final lock-in. Validates the existing database row against the strict Zod publish schema. Accepts an optional `locale` in the body. If all required content is present, flips the status to `"ready"` and returns a localized status message.
+- `GET /me` - Creator's owned project history.
+- `POST /reserve` - Bouncer route. Creates a 15-minute unpaid `draft`.
+- `POST /:referenceId/claim-free` - Claims free launch slot.
+- `POST /:referenceId/upload-urls` - Pre-signed Cloudflare R2 upload broker.
+- `PATCH /:referenceId` - Auto-save project metadata.
+- `POST /:referenceId/publish` - Final Zod validation and publish lock.
 
-### Webhooks API (`/webhooks`)
+---
 
-- `POST /payment` - Modular listener for payment gateway events. Expects a raw body to verify incoming webhook signatures. Upon a successful payment event, updates the project to `"incomplete"` and writes an immutable `receipt`.
+## 📄 License & Trademark Notice
+
+- **Code License**: Source code is licensed under the [Apache License, Version 2.0](LICENSE).
+- **Trademark Policy**: The **DOOMSCRLL** name, logos, brand identity, and custom design assets are reserved trademarks. See [TRADEMARK.md](TRADEMARK.md) for usage policy and rebranding guidelines for forks.
